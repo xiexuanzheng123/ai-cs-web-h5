@@ -56,6 +56,16 @@ button {
   letter-spacing: 1px;
 }
 
+.admin-link {
+  margin-left: auto;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 6px 12px;
+  color: #111827;
+  text-decoration: none;
+  font-size: 14px;
+}
+
 .bot-avatar,
 .mini-avatar {
   display: grid;
@@ -343,6 +353,217 @@ button {
   text-align: center;
 }
 
+.admin-shell {
+  width: min(100vw, 980px);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 28px 20px 40px;
+  background: #fff;
+}
+
+.admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.admin-header div {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-header strong {
+  font-size: 22px;
+}
+
+.admin-header span,
+.admin-muted {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.admin-header a {
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  padding: 8px 14px;
+  color: #111827;
+  text-decoration: none;
+}
+
+.rule-editor {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 22px;
+  padding: 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.field {
+  display: grid;
+  gap: 7px;
+}
+
+.field-wide {
+  grid-column: span 4;
+}
+
+.field label,
+.check-field {
+  color: #475569;
+  font-size: 13px;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  padding: 10px 11px;
+  color: #111827;
+  outline: 0;
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.check-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-actions {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+}
+
+.form-actions button,
+.rule-actions button {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  padding: 9px 13px;
+  color: #111827;
+}
+
+.form-actions button:first-child {
+  border-color: #ef3340;
+  background: #ef3340;
+  color: #fff;
+}
+
+.form-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.rule-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.rule-toolbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.rule-toolbar .field {
+  width: min(260px, 100%);
+}
+
+.rule-toolbar button {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  padding: 10px 14px;
+  color: #111827;
+}
+
+.rule-toolbar button:disabled,
+.rule-actions button:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.empty-state {
+  margin: 18px 0 0;
+  padding: 32px 16px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  color: #64748b;
+  text-align: center;
+}
+
+.rule-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.rule-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.rule-title span {
+  font-weight: 700;
+}
+
+.rule-title small,
+.rule-row p {
+  color: #64748b;
+}
+
+.rule-title em {
+  border-radius: 999px;
+  background: #dcfce7;
+  padding: 3px 8px;
+  color: #166534;
+  font-style: normal;
+  font-size: 12px;
+}
+
+.rule-title em.off {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.rule-row p {
+  margin: 7px 0 0;
+  font-size: 14px;
+}
+
+.rule-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.rule-actions .danger {
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
 @media (max-width: 360px) {
   .category-grid {
     gap: 6px;
@@ -355,5 +576,26 @@ button {
 
   .quick-actions button {
     padding: 8px 12px;
+  }
+}
+
+@media (max-width: 720px) {
+  .admin-shell {
+    padding: 18px 14px 28px;
+  }
+
+  .rule-editor {
+    grid-template-columns: 1fr;
+  }
+
+  .field-wide {
+    grid-column: auto;
+  }
+
+  .rule-row,
+  .admin-header,
+  .rule-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
