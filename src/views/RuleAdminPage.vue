@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { createRule, fetchRules, type RuleConfig, type RuleConfigInput, updateRule } from '../api/rules'
+import {
+  createRule,
+  fetchRules,
+  reloadRules,
+  type RuleConfig,
+  type RuleConfigInput,
+  updateRule,
+} from '../api/rules'
 
 const emptyForm: RuleConfigInput = {
   rule_type: 'faq',
@@ -74,6 +81,7 @@ async function submitRule() {
     } else {
       await createRule(form.value)
     }
+    await reloadRules()
     resetForm()
     await loadRules()
   } catch (err) {
@@ -95,6 +103,7 @@ async function toggleRule(rule: RuleConfig) {
       enabled: !rule.enabled,
       description: rule.description,
     })
+    await reloadRules()
     await loadRules()
   } catch (err) {
     error.value = err instanceof Error ? err.message : '规则状态更新失败'

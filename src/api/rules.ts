@@ -53,3 +53,12 @@ export async function updateRule(id: number, input: RuleConfigInput): Promise<Ru
   }
   return response.json()
 }
+
+export async function reloadRules(): Promise<void> {
+  const response = await fetch('/api/customer-service/admin/rules/reload', {
+    method: 'POST',
+  })
+  if (!response.ok) {
+    throw new Error(`规则刷新失败：${response.status}`)
+  }
+}
