@@ -17,7 +17,7 @@ export async function sendChatMessage(params: {
   sessionId: string
   message: string
 }): Promise<ChatResponse> {
-  const response = await fetch('/api/chat/send', {
+  const response = await fetch('/api/customer-service/chat', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
