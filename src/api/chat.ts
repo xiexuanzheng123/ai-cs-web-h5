@@ -10,7 +10,7 @@ export interface ChatResponse {
 }
 
 export async function sendChatMessage(params: {
-  sessionId?: string
+  sessionId: string
   message: string
 }): Promise<ChatResponse> {
   const response = await fetch('/api/chat/send', {

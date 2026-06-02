@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { sendChatMessage } from './api/chat'
+import { getOrCreateSessionId, persistSessionId } from './utils/session'
 
 interface ChatMessage {
   id: string
@@ -9,7 +10,7 @@ interface ChatMessage {
   transferToHuman?: boolean
 }
 
-const sessionId = ref<string>()
+const sessionId = ref(getOrCreateSessionId())
 const input = ref('')
 const loading = ref(false)
 const error = ref('')
@@ -57,6 +58,7 @@ async function submitMessage(text = input.value) {
       message: content,
     })
     sessionId.value = response.session_id
+    persistSessionId(response.session_id)
     messages.value.push({
       id: response.message_id,
       role: 'assistant',
