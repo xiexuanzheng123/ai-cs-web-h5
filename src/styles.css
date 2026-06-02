@@ -153,6 +153,32 @@ button {
   font-size: 12px;
 }
 
+.feedback-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.feedback-actions button {
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  color: #475569;
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+.feedback-actions button:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.feedback-result {
+  color: #64748b;
+  font-size: 12px;
+}
+
 .category-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -331,4 +357,3 @@ button {
     padding: 8px 12px;
   }
 }
-

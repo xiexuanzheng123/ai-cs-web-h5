@@ -9,6 +9,10 @@ export interface ChatResponse {
   suggestions: string[]
 }
 
+export interface FeedbackResponse {
+  success: boolean
+}
+
 export async function sendChatMessage(params: {
   sessionId: string
   message: string
@@ -37,3 +41,31 @@ export async function sendChatMessage(params: {
   return response.json()
 }
 
+export async function sendFeedback(params: {
+  conversationId: string
+  messageId: string
+  rating: 'thumbs_up' | 'thumbs_down'
+  comment?: string
+  actionTaken?: string
+}): Promise<FeedbackResponse> {
+  const response = await fetch('/api/customer-service/feedback', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      conversation_id: params.conversationId,
+      message_id: params.messageId,
+      user_id: 'demo-user-001',
+      rating: params.rating,
+      comment: params.comment ?? '',
+      action_taken: params.actionTaken ?? '',
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`反馈失败：${response.status}`)
+  }
+
+  return response.json()
+}

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { sendChatMessage } from './api/chat'
+import { sendChatMessage, sendFeedback } from './api/chat'
 import { getOrCreateSessionId, persistSessionId } from './utils/session'
 
 interface ChatMessage {
@@ -8,11 +8,13 @@ interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   transferToHuman?: boolean
+  feedback?: 'thumbs_up' | 'thumbs_down'
 }
 
 const sessionId = ref(getOrCreateSessionId())
 const input = ref('')
 const loading = ref(false)
+const feedbackLoadingId = ref('')
 const error = ref('')
 const messages = ref<ChatMessage[]>([
   {
@@ -71,6 +73,27 @@ async function submitMessage(text = input.value) {
     loading.value = false
   }
 }
+
+async function submitFeedback(message: ChatMessage, rating: 'thumbs_up' | 'thumbs_down') {
+  if (message.role !== 'assistant' || message.feedback || feedbackLoadingId.value) return
+
+  error.value = ''
+  feedbackLoadingId.value = message.id
+  try {
+    await sendFeedback({
+      conversationId: sessionId.value,
+      messageId: message.id,
+      rating,
+      comment: rating === 'thumbs_down' ? '没有解决' : '',
+      actionTaken: rating === 'thumbs_down' ? 'handoff' : '',
+    })
+    message.feedback = rating
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '反馈失败，请稍后重试'
+  } finally {
+    feedbackLoadingId.value = ''
+  }
+}
 </script>
 
 <template>
@@ -99,6 +122,25 @@ async function submitMessage(text = input.value) {
           <div class="bubble">
             {{ message.content }}
             <div v-if="message.transferToHuman" class="handoff-tag">已转人工</div>
+            <div v-if="message.role === 'assistant'" class="feedback-actions">
+              <span v-if="message.feedback" class="feedback-result">
+                {{ message.feedback === 'thumbs_up' ? '已标记有用' : '已反馈没用' }}
+              </span>
+              <template v-else>
+                <button
+                  :disabled="feedbackLoadingId === message.id"
+                  @click="submitFeedback(message, 'thumbs_up')"
+                >
+                  有用
+                </button>
+                <button
+                  :disabled="feedbackLoadingId === message.id"
+                  @click="submitFeedback(message, 'thumbs_down')"
+                >
+                  没用
+                </button>
+              </template>
+            </div>
           </div>
         </div>
 
@@ -148,4 +190,3 @@ async function submitMessage(text = input.value) {
     </footer>
   </main>
 </template>
-
