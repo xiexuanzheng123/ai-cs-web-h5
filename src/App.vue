@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { sendChatMessage, sendFeedback } from './api/chat'
+import { requestHandoff, sendChatMessage, sendFeedback } from './api/chat'
 import { getOrCreateSessionId, persistSessionId } from './utils/session'
 
 interface ChatMessage {
@@ -15,6 +15,7 @@ const sessionId = ref(getOrCreateSessionId())
 const input = ref('')
 const loading = ref(false)
 const feedbackLoadingId = ref('')
+const handoffLoading = ref(false)
 const error = ref('')
 const messages = ref<ChatMessage[]>([
   {
@@ -40,6 +41,10 @@ const faqs = ['密码错误过多', '找回账号密码', '账号异常设备登
 const quickActions = ['转人工', '热门活动', '社区活动']
 
 const canSend = computed(() => input.value.trim().length > 0 && !loading.value)
+
+const lastAssistantMessage = computed(() => {
+  return [...messages.value].reverse().find((message) => message.role === 'assistant')
+})
 
 async function submitMessage(text = input.value) {
   const content = text.trim()
@@ -92,6 +97,30 @@ async function submitFeedback(message: ChatMessage, rating: 'thumbs_up' | 'thumb
     error.value = err instanceof Error ? err.message : '反馈失败，请稍后重试'
   } finally {
     feedbackLoadingId.value = ''
+  }
+}
+
+async function submitHandoff(reason = 'user_requested') {
+  if (handoffLoading.value) return
+
+  error.value = ''
+  handoffLoading.value = true
+  try {
+    await requestHandoff({
+      conversationId: sessionId.value,
+      messageId: lastAssistantMessage.value?.id,
+      reason,
+    })
+    messages.value.push({
+      id: `handoff-${Date.now()}`,
+      role: 'assistant',
+      content: '已为您转接智齿人工客服，请继续在人工客服窗口处理。',
+      transferToHuman: true,
+    })
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '转人工失败，请稍后重试'
+  } finally {
+    handoffLoading.value = false
   }
 }
 </script>
@@ -170,7 +199,12 @@ async function submitFeedback(message: ChatMessage, rating: 'thumbs_up' | 'thumb
       </section>
 
       <section class="quick-actions" aria-label="快捷操作">
-        <button v-for="action in quickActions" :key="action" @click="submitMessage(action)">
+        <button
+          v-for="action in quickActions"
+          :key="action"
+          :disabled="action === '转人工' && handoffLoading"
+          @click="action === '转人工' ? submitHandoff() : submitMessage(action)"
+        >
           {{ action }}
         </button>
       </section>

@@ -13,6 +13,12 @@ export interface FeedbackResponse {
   success: boolean
 }
 
+export interface HandoffResponse {
+  success: boolean
+  handoff_id: string
+  status: string
+}
+
 export async function sendChatMessage(params: {
   sessionId: string
   message: string
@@ -65,6 +71,32 @@ export async function sendFeedback(params: {
 
   if (!response.ok) {
     throw new Error(`反馈失败：${response.status}`)
+  }
+
+  return response.json()
+}
+
+export async function requestHandoff(params: {
+  conversationId: string
+  messageId?: string
+  reason?: string
+}): Promise<HandoffResponse> {
+  const response = await fetch('/api/customer-service/handoff', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      conversation_id: params.conversationId,
+      message_id: params.messageId ?? '',
+      user_id: 'demo-user-001',
+      reason: params.reason ?? 'user_requested',
+      source: 'h5',
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`转人工失败：${response.status}`)
   }
 
   return response.json()
