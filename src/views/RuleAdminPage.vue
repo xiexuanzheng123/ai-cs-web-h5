@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
 import {
   createRule,
   fetchRules,
@@ -134,7 +133,6 @@ async function toggleRule(rule: RuleConfig) {
         <strong>规则配置</strong>
         <span>{{ enabledCount }} 条启用 / {{ rules.length }} 条规则</span>
       </div>
-      <RouterLink to="/">返回客服</RouterLink>
     </header>
 
     <section class="rule-editor">

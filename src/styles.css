@@ -59,10 +59,10 @@ button {
 .admin-link {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.72);
-  padding: 6px 12px;
+  padding: 6px 10px;
   color: #111827;
   text-decoration: none;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .title + .admin-link {
@@ -372,10 +372,69 @@ button {
   color: #991b1b;
 }
 
-.admin-shell {
-  width: min(100vw, 980px);
+.admin-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
   min-height: 100vh;
-  margin: 0 auto;
+  background: #f3f4f6;
+}
+
+.admin-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  border-right: 1px solid #e5e7eb;
+  background: #ffffff;
+  padding: 24px 16px;
+}
+
+.sidebar-brand {
+  display: grid;
+  gap: 4px;
+  padding: 0 6px 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.sidebar-brand strong {
+  font-size: 20px;
+}
+
+.sidebar-brand span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.sidebar-nav {
+  display: grid;
+  gap: 6px;
+}
+
+.sidebar-nav a,
+.sidebar-back {
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #334155;
+  text-decoration: none;
+}
+
+.sidebar-nav a.active {
+  background: #fff1f2;
+  color: #be123c;
+  font-weight: 700;
+}
+
+.sidebar-back {
+  margin-top: auto;
+  border: 1px solid #d1d5db;
+  text-align: center;
+}
+
+.admin-content {
+  min-width: 0;
+}
+
+.admin-shell {
+  min-height: 100vh;
   padding: 28px 20px 40px;
   background: #fff;
 }
@@ -578,6 +637,13 @@ button {
   font-size: 14px;
 }
 
+.knowledge-row p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
 .rule-actions {
   display: flex;
   flex: 0 0 auto;
@@ -673,6 +739,41 @@ button {
 @media (max-width: 720px) {
   .admin-shell {
     padding: 18px 14px 28px;
+  }
+
+  .admin-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: grid;
+    gap: 10px;
+    border-right: 0;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 12px;
+  }
+
+  .sidebar-brand {
+    border-bottom: 0;
+    padding: 0;
+  }
+
+  .sidebar-nav {
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .sidebar-nav a,
+  .sidebar-back {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .sidebar-back {
+    margin-top: 0;
   }
 
   .rule-editor {

@@ -1,0 +1,118 @@
+import { readApiError } from './error'
+
+export interface KnowledgeRecord {
+  id: number
+  knowledge_id: string
+  title: string
+  content: string
+  category: string
+  owner: string
+  version: string
+  status: string
+}
+
+export interface KnowledgeInput {
+  knowledge_id: string
+  title: string
+  content: string
+  category: string
+  owner: string
+  version: string
+  status: string
+}
+
+export interface RAGEvalCaseRecord {
+  id: number
+  case_id: string
+  query_text: string
+  expected_knowledge_id: string
+  expected_intent: string
+  should_answer: boolean
+  status: string
+}
+
+export interface RAGEvalCaseInput {
+  case_id: string
+  query_text: string
+  expected_knowledge_id: string
+  expected_intent: string
+  should_answer: boolean
+  status: string
+}
+
+export async function fetchKnowledge(): Promise<KnowledgeRecord[]> {
+  const response = await fetch('/api/customer-service/admin/knowledge')
+  if (!response.ok) {
+    throw await readApiError(response, '知识库加载失败')
+  }
+  const payload = (await response.json()) as { knowledge: KnowledgeRecord[] }
+  return payload.knowledge
+}
+
+export async function createKnowledge(input: KnowledgeInput): Promise<KnowledgeRecord> {
+  const response = await fetch('/api/customer-service/admin/knowledge', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  })
+  if (!response.ok) {
+    throw await readApiError(response, '知识创建失败')
+  }
+  return response.json()
+}
+
+export async function updateKnowledge(id: number, input: KnowledgeInput): Promise<KnowledgeRecord> {
+  const response = await fetch(`/api/customer-service/admin/knowledge/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  })
+  if (!response.ok) {
+    throw await readApiError(response, '知识更新失败')
+  }
+  return response.json()
+}
+
+export async function fetchRAGEvalCases(): Promise<RAGEvalCaseRecord[]> {
+  const response = await fetch('/api/customer-service/admin/rag-eval-cases')
+  if (!response.ok) {
+    throw await readApiError(response, 'RAG 回归集加载失败')
+  }
+  const payload = (await response.json()) as { cases: RAGEvalCaseRecord[] }
+  return payload.cases
+}
+
+export async function createRAGEvalCase(input: RAGEvalCaseInput): Promise<RAGEvalCaseRecord> {
+  const response = await fetch('/api/customer-service/admin/rag-eval-cases', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  })
+  if (!response.ok) {
+    throw await readApiError(response, 'RAG case 创建失败')
+  }
+  return response.json()
+}
+
+export async function updateRAGEvalCase(
+  id: number,
+  input: RAGEvalCaseInput,
+): Promise<RAGEvalCaseRecord> {
+  const response = await fetch(`/api/customer-service/admin/rag-eval-cases/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  })
+  if (!response.ok) {
+    throw await readApiError(response, 'RAG case 更新失败')
+  }
+  return response.json()
+}

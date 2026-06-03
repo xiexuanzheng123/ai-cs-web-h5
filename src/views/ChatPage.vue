@@ -148,8 +148,7 @@ async function submitHandoff(reason = 'user_requested') {
         <strong>小唱机器人</strong>
         <span>唱吧</span>
       </div>
-      <RouterLink class="admin-link" to="/admin/dashboard">看板</RouterLink>
-      <RouterLink class="admin-link" to="/admin/rules">规则</RouterLink>
+      <RouterLink class="admin-link" to="/admin/dashboard">管理</RouterLink>
     </header>
 
     <section class="chat-body">

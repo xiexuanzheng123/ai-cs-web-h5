@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
 import {
   fetchDashboardStats,
   fetchFeatureFlags,
@@ -69,10 +68,6 @@ async function toggleFlag(flag: FeatureFlag) {
         <strong>基础看板</strong>
         <span>规则路由、转人工、反馈和延迟统计</span>
       </div>
-      <nav class="admin-nav">
-        <RouterLink to="/">返回客服</RouterLink>
-        <RouterLink to="/admin/rules">规则配置</RouterLink>
-      </nav>
     </header>
 
     <p v-if="error" class="notice danger">{{ error }}</p>
