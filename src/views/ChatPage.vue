@@ -47,14 +47,19 @@ const lastAssistantMessage = computed(() => {
   return [...messages.value].reverse().find((message) => message.role === 'assistant')
 })
 
-async function submitMessage(text = input.value) {
+function newMessageId() {
+  return `m_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`
+}
+
+async function submitMessage(text = input.value, messageType: 'text' | 'image' | 'audio' = 'text') {
   const content = text.trim()
   if (!content || loading.value) return
 
   error.value = ''
   input.value = ''
+  const messageId = newMessageId()
   messages.value.push({
-    id: `user-${Date.now()}`,
+    id: messageId,
     role: 'user',
     content,
   })
@@ -62,16 +67,18 @@ async function submitMessage(text = input.value) {
   loading.value = true
   try {
     const response = await sendChatMessage({
-      sessionId: sessionId.value,
+      conversationId: sessionId.value,
+      messageId,
+      messageType,
       message: content,
     })
-    sessionId.value = response.session_id
-    persistSessionId(response.session_id)
+    sessionId.value = response.conversation_id
+    persistSessionId(response.conversation_id)
     messages.value.push({
-      id: response.message_id,
+      id: response.trace_id,
       role: 'assistant',
-      content: response.reply,
-      transferToHuman: response.transfer_to_human,
+      content: response.content.text,
+      transferToHuman: response.handoff.required,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : '请求失败，请稍后重试'
@@ -141,6 +148,7 @@ async function submitHandoff(reason = 'user_requested') {
         <strong>小唱机器人</strong>
         <span>唱吧</span>
       </div>
+      <RouterLink class="admin-link" to="/admin/dashboard">看板</RouterLink>
       <RouterLink class="admin-link" to="/admin/rules">规则</RouterLink>
     </header>
 
@@ -214,6 +222,8 @@ async function submitHandoff(reason = 'user_requested') {
         >
           {{ action }}
         </button>
+        <button @click="submitMessage('[图片]', 'image')">图片</button>
+        <button @click="submitMessage('[语音]', 'audio')">语音</button>
       </section>
     </section>
 

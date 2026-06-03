@@ -1,14 +1,24 @@
 import { readApiError } from './error'
 
 export interface ChatResponse {
-  session_id: string
-  message_id: string
-  reply: string
-  reply_type: string
-  transfer_to_human: boolean
-  risk_level: string
+  trace_id: string
+  conversation_id: string
+  response_type: string
+  content: {
+    text: string
+    buttons: Array<{
+      text: string
+      action: string
+    }>
+  }
+  handoff: {
+    required: boolean
+    reason: string
+  }
   intent: string
-  suggestions: string[]
+  route: string
+  risk_level: string
+  message_id: string
 }
 
 export interface FeedbackResponse {
@@ -22,7 +32,9 @@ export interface HandoffResponse {
 }
 
 export async function sendChatMessage(params: {
-  sessionId: string
+  conversationId: string
+  messageId: string
+  messageType: 'text' | 'image' | 'audio'
   message: string
 }): Promise<ChatResponse> {
   const response = await fetch('/api/customer-service/chat', {
@@ -31,10 +43,12 @@ export async function sendChatMessage(params: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      session_id: params.sessionId,
+      conversation_id: params.conversationId,
       user_id: 'demo-user-001',
+      message_id: params.messageId,
+      message_type: params.messageType,
       message: params.message,
-      source: 'h5',
+      channel: 'h5',
       metadata: {
         platform: 'h5',
         app_version: 'local',
@@ -93,7 +107,7 @@ export async function requestHandoff(params: {
       message_id: params.messageId ?? '',
       user_id: 'demo-user-001',
       reason: params.reason ?? 'user_requested',
-      source: 'h5',
+      channel: 'h5',
     }),
   })
 
