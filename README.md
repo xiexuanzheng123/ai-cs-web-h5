@@ -4,14 +4,16 @@ Mobile H5 test client that replaces the native customer-service page during loca
 
 ## Setup
 
+推荐从 workspace 根目录按统一顺序启动，见 `../README.md`。
+
 ```bash
-pnpm install
+npx --yes pnpm@9.15.4 install
 ```
 
 ## Run
 
 ```bash
-pnpm dev
+npx --yes pnpm@9.15.4 dev
 ```
 
 Open the Vite URL and send messages after these services are running:
@@ -22,5 +24,5 @@ Open the Vite URL and send messages after these services are running:
 ## Build
 
 ```bash
-pnpm build
+npx --yes pnpm@9.15.4 build
 ```
