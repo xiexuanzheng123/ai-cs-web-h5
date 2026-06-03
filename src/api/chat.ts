@@ -1,3 +1,5 @@
+import { readApiError } from './error'
+
 export interface ChatResponse {
   session_id: string
   message_id: string
@@ -41,7 +43,7 @@ export async function sendChatMessage(params: {
   })
 
   if (!response.ok) {
-    throw new Error(`请求失败：${response.status}`)
+    throw await readApiError(response, '请求失败')
   }
 
   return response.json()
@@ -70,7 +72,7 @@ export async function sendFeedback(params: {
   })
 
   if (!response.ok) {
-    throw new Error(`反馈失败：${response.status}`)
+    throw await readApiError(response, '反馈失败')
   }
 
   return response.json()
@@ -96,7 +98,7 @@ export async function requestHandoff(params: {
   })
 
   if (!response.ok) {
-    throw new Error(`转人工失败：${response.status}`)
+    throw await readApiError(response, '转人工失败')
   }
 
   return response.json()

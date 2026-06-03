@@ -74,7 +74,13 @@ async function submitMessage(text = input.value) {
       transferToHuman: response.transfer_to_human,
     })
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '请求失败，请稍后重试'
+    const message = err instanceof Error ? err.message : '请求失败，请稍后重试'
+    error.value = message
+    messages.value.push({
+      id: `error-${Date.now()}`,
+      role: 'assistant',
+      content: `服务暂时不可用：${message}`,
+    })
   } finally {
     loading.value = false
   }

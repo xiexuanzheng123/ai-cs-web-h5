@@ -27,6 +27,7 @@ const saving = ref(false)
 const togglingId = ref<number | null>(null)
 const filterType = ref('all')
 const error = ref('')
+const notice = ref('')
 
 const enabledCount = computed(() => rules.value.filter((rule) => rule.enabled).length)
 const filteredRules = computed(() => {
@@ -38,9 +39,12 @@ onMounted(() => {
   void loadRules()
 })
 
-async function loadRules() {
+async function loadRules(options: { keepNotice?: boolean } = {}) {
   loading.value = true
   error.value = ''
+  if (!options.keepNotice) {
+    notice.value = ''
+  }
   try {
     rules.value = await fetchRules()
   } catch (err) {
@@ -75,15 +79,20 @@ async function submitRule() {
 
   saving.value = true
   error.value = ''
+  notice.value = ''
   try {
     if (editingId.value) {
       await updateRule(editingId.value, form.value)
     } else {
       await createRule(form.value)
     }
-    await reloadRules()
+    try {
+      await reloadRules()
+    } catch (err) {
+      notice.value = err instanceof Error ? `规则已保存，但刷新缓存失败：${err.message}` : '规则已保存，但刷新缓存失败'
+    }
     resetForm()
-    await loadRules()
+    await loadRules({ keepNotice: true })
   } catch (err) {
     error.value = err instanceof Error ? err.message : '规则保存失败'
   } finally {
@@ -94,6 +103,7 @@ async function submitRule() {
 async function toggleRule(rule: RuleConfig) {
   togglingId.value = rule.id
   error.value = ''
+  notice.value = ''
   try {
     await updateRule(rule.id, {
       rule_type: rule.rule_type,
@@ -103,8 +113,12 @@ async function toggleRule(rule: RuleConfig) {
       enabled: !rule.enabled,
       description: rule.description,
     })
-    await reloadRules()
-    await loadRules()
+    try {
+      await reloadRules()
+    } catch (err) {
+      notice.value = err instanceof Error ? `规则已更新，但刷新缓存失败：${err.message}` : '规则已更新，但刷新缓存失败'
+    }
+    await loadRules({ keepNotice: true })
   } catch (err) {
     error.value = err instanceof Error ? err.message : '规则状态更新失败'
   } finally {
@@ -166,6 +180,7 @@ async function toggleRule(rule: RuleConfig) {
     </section>
 
     <p v-if="error" class="error">{{ error }}</p>
+    <p v-if="notice" class="notice">{{ notice }}</p>
 
     <section class="rule-toolbar">
       <div class="field">
@@ -178,7 +193,7 @@ async function toggleRule(rule: RuleConfig) {
           <option value="faq">固定 FAQ</option>
         </select>
       </div>
-      <button :disabled="loading" @click="loadRules">
+      <button :disabled="loading" @click="loadRules()">
         {{ loading ? '刷新中' : '刷新列表' }}
       </button>
     </section>

@@ -1,3 +1,5 @@
+import { readApiError } from './error'
+
 export interface RuleConfig {
   id: number
   rule_type: string
@@ -20,7 +22,7 @@ export interface RuleConfigInput {
 export async function fetchRules(): Promise<RuleConfig[]> {
   const response = await fetch('/api/customer-service/admin/rules')
   if (!response.ok) {
-    throw new Error(`规则加载失败：${response.status}`)
+    throw await readApiError(response, '规则加载失败')
   }
   const payload = (await response.json()) as { rules: RuleConfig[] }
   return payload.rules
@@ -35,7 +37,7 @@ export async function createRule(input: RuleConfigInput): Promise<RuleConfig> {
     body: JSON.stringify(input),
   })
   if (!response.ok) {
-    throw new Error(`规则创建失败：${response.status}`)
+    throw await readApiError(response, '规则创建失败')
   }
   return response.json()
 }
@@ -49,7 +51,7 @@ export async function updateRule(id: number, input: RuleConfigInput): Promise<Ru
     body: JSON.stringify(input),
   })
   if (!response.ok) {
-    throw new Error(`规则更新失败：${response.status}`)
+    throw await readApiError(response, '规则更新失败')
   }
   return response.json()
 }
@@ -59,6 +61,6 @@ export async function reloadRules(): Promise<void> {
     method: 'POST',
   })
   if (!response.ok) {
-    throw new Error(`规则刷新失败：${response.status}`)
+    throw await readApiError(response, '规则刷新失败')
   }
 }
