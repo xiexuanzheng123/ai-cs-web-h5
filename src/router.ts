@@ -5,6 +5,7 @@ import DashboardPage from './views/DashboardPage.vue'
 import KnowledgeAdminPage from './views/KnowledgeAdminPage.vue'
 import RAGEvalAdminPage from './views/RAGEvalAdminPage.vue'
 import RuleAdminPage from './views/RuleAdminPage.vue'
+import TraceLogPage from './views/TraceLogPage.vue'
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -18,6 +19,7 @@ export const router = createRouter({
         { path: 'dashboard', component: DashboardPage },
         { path: 'knowledge', component: KnowledgeAdminPage },
         { path: 'rag-eval', component: RAGEvalAdminPage },
+        { path: 'trace-logs', component: TraceLogPage },
         { path: 'rules', component: RuleAdminPage },
       ],
     },

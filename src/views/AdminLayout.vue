@@ -6,6 +6,7 @@ const navItems = [
   { label: '规则配置', to: '/admin/rules' },
   { label: '知识库管理', to: '/admin/knowledge' },
   { label: 'RAG 回归集', to: '/admin/rag-eval' },
+  { label: '链路日志', to: '/admin/trace-logs' },
 ]
 </script>
 

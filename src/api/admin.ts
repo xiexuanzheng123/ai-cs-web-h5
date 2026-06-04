@@ -18,6 +18,46 @@ export interface FeatureFlag {
   description: string
 }
 
+export interface TraceStage {
+  name: string
+  status: string
+  latency_ms: number
+  detail: string
+}
+
+export interface TraceRagMatch {
+  chunk_id: string
+  knowledge_id: string
+  title: string
+  content: string
+  score: number
+  chunk_text: string
+}
+
+export interface TraceLog {
+  id: number
+  trace_id: string
+  conversation_id: string
+  message_id: string
+  user_id: string
+  channel: string
+  message_type: string
+  user_message: string
+  response_text: string
+  intent: string
+  route: string
+  response_type: string
+  risk_level: string
+  handoff_required: boolean
+  handoff_reason: string
+  model_used: string
+  total_latency_ms: number
+  stages: TraceStage[]
+  rag_matches: TraceRagMatch[]
+  error_message: string
+  created_at: string
+}
+
 export async function fetchDashboardStats(): Promise<DashboardStats> {
   const response = await fetch('/api/customer-service/admin/dashboard')
   if (!response.ok) {
@@ -33,6 +73,15 @@ export async function fetchFeatureFlags(): Promise<FeatureFlag[]> {
   }
   const payload = (await response.json()) as { flags: FeatureFlag[] }
   return payload.flags
+}
+
+export async function fetchTraceLogs(limit = 50): Promise<TraceLog[]> {
+  const response = await fetch(`/api/customer-service/admin/trace-logs?limit=${limit}`)
+  if (!response.ok) {
+    throw await readApiError(response, '链路日志加载失败')
+  }
+  const payload = (await response.json()) as { logs: TraceLog[] }
+  return payload.logs
 }
 
 export async function updateFeatureFlag(key: string, enabled: boolean): Promise<FeatureFlag> {

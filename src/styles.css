@@ -721,6 +721,264 @@ button {
   color: #b91c1c;
 }
 
+.trace-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.trace-list {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.trace-item {
+  display: grid;
+  gap: 7px;
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px;
+  color: #111827;
+  text-align: left;
+}
+
+.trace-item.active {
+  border-color: #ef3340;
+  background: #fff1f2;
+}
+
+.trace-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.trace-title strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trace-title em,
+.trace-detail-header em {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #dcfce7;
+  padding: 3px 8px;
+  color: #166534;
+  font-style: normal;
+  font-size: 12px;
+}
+
+.trace-title em.off,
+.trace-detail-header em.off {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.trace-meta,
+.trace-id {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trace-detail {
+  min-width: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  padding: 16px;
+}
+
+.trace-preview {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  padding: 16px;
+}
+
+.trace-preview p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-height: 1.7;
+}
+
+.trace-preview button,
+.modal-close {
+  width: fit-content;
+  border: 1px solid #ef3340;
+  border-radius: 6px;
+  background: #ef3340;
+  padding: 9px 14px;
+  color: #fff;
+}
+
+.trace-modal-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.trace-modal-mask .trace-detail {
+  width: min(980px, 100%);
+  max-height: min(860px, calc(100vh - 48px));
+  overflow-y: auto;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.24);
+}
+
+.trace-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.trace-detail-header div {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.trace-detail-header strong,
+.trace-detail-header span {
+  overflow-wrap: anywhere;
+}
+
+.trace-detail-header span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.trace-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.trace-flow {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.trace-flow div {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 112px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 12px;
+}
+
+.trace-flow span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.trace-flow strong,
+.trace-flow small {
+  overflow-wrap: anywhere;
+}
+
+.trace-flow small {
+  color: #475569;
+  line-height: 1.5;
+}
+
+.trace-summary-grid div {
+  display: grid;
+  gap: 5px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 10px;
+}
+
+.trace-summary-grid span,
+.trace-block h2,
+.stage-row small,
+.rag-match-row span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.trace-summary-grid strong {
+  overflow-wrap: anywhere;
+}
+
+.trace-block {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.trace-block h2 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.trace-block p,
+.rag-match-row p {
+  margin: 0;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.stage-list {
+  display: grid;
+  gap: 8px;
+}
+
+.stage-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 80px 90px minmax(0, 2fr);
+  gap: 8px;
+  align-items: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.stage-row em {
+  font-style: normal;
+  color: #334155;
+}
+
+.rag-match-row {
+  display: grid;
+  gap: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.modal-close {
+  margin-top: 18px;
+}
+
 @media (max-width: 360px) {
   .category-grid {
     gap: 6px;
@@ -794,5 +1052,16 @@ button {
 
   .dashboard-grid {
     grid-template-columns: 1fr;
+  }
+
+  .trace-layout,
+  .trace-summary-grid,
+  .trace-flow,
+  .stage-row {
+    grid-template-columns: 1fr;
+  }
+
+  .trace-modal-mask {
+    padding: 12px;
   }
 }
