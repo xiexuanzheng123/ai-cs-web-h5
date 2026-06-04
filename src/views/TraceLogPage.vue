@@ -10,14 +10,17 @@ const error = ref('')
 
 const selectedLog = computed(() => logs.value.find((item) => item.id === selectedId.value) ?? null)
 const detailLog = computed(() => logs.value.find((item) => item.id === detailId.value) ?? null)
+const activeDetailLog = computed(() => detailLog.value)
+const detailStages = computed(() => activeDetailLog.value?.stages ?? [])
+const detailRagMatches = computed(() => activeDetailLog.value?.rag_matches ?? [])
 const routerStage = computed(() =>
-  detailLog.value?.stages.find((item) => item.name === 'rule_match') ?? null,
+  detailStages.value.find((item) => item.name === 'rule_match') ?? null,
 )
 const ragStage = computed(() =>
-  detailLog.value?.stages.find((item) => item.name === 'rag_search') ?? null,
+  detailStages.value.find((item) => item.name === 'rag_search') ?? null,
 )
 const llmStage = computed(() =>
-  detailLog.value?.stages.find((item) => item.name === 'llm_reply') ?? null,
+  detailStages.value.find((item) => item.name === 'llm_reply') ?? null,
 )
 
 onMounted(() => {
@@ -99,27 +102,27 @@ function openDetail(item: TraceLog) {
         <button @click="detailId = selectedLog.id">查看完整链路</button>
       </article>
 
-      <div v-if="detailLog" class="trace-modal-mask" @click.self="detailId = null">
+      <div v-if="activeDetailLog" class="trace-modal-mask" @click.self="detailId = null">
         <article class="trace-detail" role="dialog" aria-modal="true" aria-label="链路详情">
         <header class="trace-detail-header">
           <div>
             <strong>链路详情</strong>
-            <span>{{ detailLog.trace_id }}</span>
+            <span>{{ activeDetailLog.trace_id }}</span>
           </div>
-          <em :class="{ off: detailLog.error_message }">
-            {{ detailLog.error_message ? 'error' : detailLog.route }}
+          <em :class="{ off: activeDetailLog.error_message }">
+            {{ activeDetailLog.error_message ? 'error' : activeDetailLog.route }}
           </em>
         </header>
 
         <section class="trace-flow">
           <div>
             <span>1. 用户问题</span>
-            <strong>{{ detailLog.user_message }}</strong>
+            <strong>{{ activeDetailLog.user_message }}</strong>
           </div>
           <div>
             <span>2. Gateway</span>
-            <strong>{{ detailLog.channel }} / {{ detailLog.message_type }}</strong>
-            <small>{{ detailLog.conversation_id }}</small>
+            <strong>{{ activeDetailLog.channel }} / {{ activeDetailLog.message_type }}</strong>
+            <small>{{ activeDetailLog.conversation_id }}</small>
           </div>
           <div>
             <span>3. Router</span>
@@ -133,51 +136,51 @@ function openDetail(item: TraceLog) {
           </div>
           <div>
             <span>5. 生成答案</span>
-            <strong>{{ detailLog.route === 'rag' ? 'RAG 直答' : 'LLM 回复' }}</strong>
-            <small>{{ llmStage?.detail || detailLog.intent }}</small>
+            <strong>{{ activeDetailLog.route === 'rag' ? 'RAG 直答' : 'LLM 回复' }}</strong>
+            <small>{{ llmStage?.detail || activeDetailLog.intent }}</small>
           </div>
         </section>
 
         <section class="trace-summary-grid">
           <div>
             <span>总耗时</span>
-            <strong>{{ formatLatency(detailLog.total_latency_ms) }}</strong>
+            <strong>{{ formatLatency(activeDetailLog.total_latency_ms) }}</strong>
           </div>
           <div>
             <span>会话</span>
-            <strong>{{ detailLog.conversation_id }}</strong>
+            <strong>{{ activeDetailLog.conversation_id }}</strong>
           </div>
           <div>
             <span>意图</span>
-            <strong>{{ detailLog.intent || '-' }}</strong>
+            <strong>{{ activeDetailLog.intent || '-' }}</strong>
           </div>
           <div>
             <span>模型</span>
-            <strong>{{ detailLog.model_used || '-' }}</strong>
+            <strong>{{ activeDetailLog.model_used || '-' }}</strong>
           </div>
           <div>
             <span>转人工</span>
-            <strong>{{ detailLog.handoff_required ? '是' : '否' }}</strong>
+            <strong>{{ activeDetailLog.handoff_required ? '是' : '否' }}</strong>
           </div>
           <div>
             <span>风险</span>
-            <strong>{{ detailLog.risk_level || '-' }}</strong>
+            <strong>{{ activeDetailLog.risk_level || '-' }}</strong>
           </div>
         </section>
 
-        <section v-if="detailLog.error_message" class="notice danger">
-          {{ detailLog.error_message }}
+        <section v-if="activeDetailLog.error_message" class="notice danger">
+          {{ activeDetailLog.error_message }}
         </section>
 
         <section class="trace-block">
           <h2>回复内容</h2>
-          <p>{{ detailLog.response_text || '无回复内容' }}</p>
+          <p>{{ activeDetailLog.response_text || '无回复内容' }}</p>
         </section>
 
         <section class="trace-block">
           <h2>阶段耗时</h2>
           <div class="stage-list">
-            <div v-for="stage in detailLog.stages" :key="`${stage.name}-${stage.status}`" class="stage-row">
+            <div v-for="stage in detailStages" :key="`${stage.name}-${stage.status}`" class="stage-row">
               <span>{{ stage.name }}</span>
               <em>{{ stage.status }}</em>
               <strong>{{ formatLatency(stage.latency_ms) }}</strong>
@@ -188,8 +191,8 @@ function openDetail(item: TraceLog) {
 
         <section class="trace-block">
           <h2>RAG 检索</h2>
-          <p v-if="detailLog.rag_matches.length === 0" class="admin-muted">没有召回候选，或未进入 RAG</p>
-          <div v-for="match in detailLog.rag_matches" :key="match.chunk_id" class="rag-match-row">
+          <p v-if="detailRagMatches.length === 0" class="admin-muted">没有召回候选，或未进入 RAG</p>
+          <div v-for="match in detailRagMatches" :key="match.chunk_id" class="rag-match-row">
             <strong>{{ match.title || match.knowledge_id }}</strong>
             <span>{{ match.knowledge_id }} / {{ match.chunk_id }} / {{ match.score.toFixed(3) }}</span>
             <p>{{ match.chunk_text || match.content }}</p>
@@ -198,7 +201,7 @@ function openDetail(item: TraceLog) {
 
         <section class="trace-block">
           <h2>最终答案</h2>
-          <p>{{ detailLog.response_text || '无回复内容' }}</p>
+          <p>{{ activeDetailLog.response_text || '无回复内容' }}</p>
         </section>
 
         <button class="modal-close" @click="detailId = null">关闭</button>
