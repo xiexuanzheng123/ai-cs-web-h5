@@ -20,7 +20,7 @@ export interface ChatResponse {
   risk_level: string
   citations: Array<{
     doc_id: string
-    title: string
+    question: string
     score: number
   }>
   message_id: string

@@ -28,7 +28,7 @@ export interface TraceStage {
 export interface TraceRagMatch {
   chunk_id: string
   knowledge_id: string
-  title: string
+  question: string
   content: string
   score: number
   chunk_text: string
@@ -36,7 +36,7 @@ export interface TraceRagMatch {
 
 export interface TraceCitation {
   doc_id: string
-  title: string
+  question: string
   score: number
 }
 

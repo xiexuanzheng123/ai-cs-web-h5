@@ -137,7 +137,11 @@ function formatStageName(name: string) {
 function formatCitationNames(item: TraceLog) {
   const citations = Array.isArray(item.citations) ? item.citations : []
   if (citations.length === 0) return '--'
-  return citations.map((citation) => citation.title || citation.doc_id).join('，')
+  return citations.map((citation) => citation.question || citation.doc_id).join('，')
+}
+
+function formatRagQuestion(match: TraceLog['rag_matches'][number]) {
+  return match.question || match.knowledge_id
 }
 
 function changePage(nextPage: number) {
@@ -383,7 +387,7 @@ function changePageSize(event: Event) {
             <h2>RAG 检索</h2>
             <p v-if="detailRagMatches.length === 0" class="admin-muted">没有召回候选，或未进入 RAG</p>
             <div v-for="match in detailRagMatches" :key="match.chunk_id" class="rag-match-row">
-              <strong>{{ match.title || match.knowledge_id }}</strong>
+              <strong>{{ formatRagQuestion(match) }}</strong>
               <span>{{ match.knowledge_id }} / {{ match.chunk_id }} / {{ match.score.toFixed(3) }}</span>
               <p>{{ match.chunk_text || match.content }}</p>
             </div>
@@ -393,7 +397,7 @@ function changePageSize(event: Event) {
             <h2>引用来源</h2>
             <p v-if="detailCitations.length === 0" class="admin-muted">本次回答没有引用来源</p>
             <div v-for="citation in detailCitations" :key="citation.doc_id" class="citation-row">
-              <strong>{{ citation.title || citation.doc_id }}</strong>
+              <strong>{{ citation.question || citation.doc_id }}</strong>
               <span>{{ citation.doc_id }} / {{ citation.score.toFixed(3) }}</span>
             </div>
           </section>

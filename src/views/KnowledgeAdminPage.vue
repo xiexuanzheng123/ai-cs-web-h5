@@ -10,7 +10,7 @@ import {
 
 const emptyForm: KnowledgeInput = {
   knowledge_id: '',
-  title: '',
+  question: '',
   content: '',
   category: 'account',
   owner: 'cs_operation',
@@ -54,7 +54,7 @@ const filteredRecords = computed(() => {
   const version = filters.version.trim().toLowerCase()
 
   return records.value.filter((record) => {
-    const haystack = [record.knowledge_id, record.title, record.content, record.category, record.owner]
+    const haystack = [record.knowledge_id, record.question, record.content, record.category, record.owner]
       .join(' ')
       .toLowerCase()
     if (keyword && !haystack.includes(keyword)) return false
@@ -108,7 +108,7 @@ function openEditDialog(record: KnowledgeRecord) {
   editingId.value = record.id
   form.value = {
     knowledge_id: record.knowledge_id,
-    title: record.title,
+    question: record.question,
     content: record.content,
     category: record.category,
     owner: record.owner,
@@ -125,8 +125,8 @@ function closeDialog() {
 }
 
 async function submitKnowledge() {
-  if (!form.value.knowledge_id.trim() || !form.value.title.trim() || !form.value.content.trim()) {
-    error.value = '请填写知识 ID、标题和内容'
+  if (!form.value.knowledge_id.trim() || !form.value.question.trim() || !form.value.content.trim()) {
+    error.value = '请填写知识 ID、问题和内容'
     return
   }
 
@@ -152,7 +152,7 @@ async function updateStatus(record: KnowledgeRecord, status: string) {
   try {
     await updateKnowledge(record.id, {
       knowledge_id: record.knowledge_id,
-      title: record.title,
+      question: record.question,
       content: record.content,
       category: record.category,
       owner: record.owner,
@@ -221,7 +221,7 @@ function contentSummary(content: string) {
       <div class="knowledge-filters">
         <label>
           <span>关键词</span>
-          <input v-model="filters.keyword" placeholder="请输入标题/问答/关键词" />
+          <input v-model="filters.keyword" placeholder="请输入问题/答案/关键词" />
         </label>
         <label>
           <span>审核状态</span>
@@ -329,14 +329,14 @@ function contentSummary(content: string) {
                 />
               </td>
               <td>{{ (page.current - 1) * page.pageSize + index + 1 }}</td>
-              <td class="question-cell">{{ record.title }}</td>
+              <td class="question-cell">{{ record.question }}</td>
               <td class="answer-cell">{{ contentSummary(record.content) }}</td>
               <td>
                 <span class="status-tag" :class="statusClass(record.status)">
                   {{ formatStatus(record.status) }}
                 </span>
               </td>
-              <td>{{ record.title }}</td>
+              <td>{{ record.question }}</td>
               <td>后台维护</td>
               <td>{{ record.category }}</td>
               <td>{{ record.owner }}</td>
@@ -387,8 +387,8 @@ function contentSummary(content: string) {
             <input v-model="form.knowledge_id" placeholder="kb_member_auto_renew_cancel" />
           </label>
           <label>
-            <span>标题 / 问题</span>
-            <input v-model="form.title" placeholder="会员自动续费取消说明" />
+            <span>问题</span>
+            <input v-model="form.question" placeholder="会员自动续费怎么取消" />
           </label>
           <label>
             <span>分类</span>

@@ -172,7 +172,7 @@ async function submitHandoff(reason = 'user_requested') {
             <div v-if="message.citations?.length" class="citation-list">
               <span>参考来源</span>
               <small v-for="citation in message.citations" :key="citation.doc_id">
-                {{ citation.title || citation.doc_id }} / {{ citation.score.toFixed(3) }}
+                {{ citation.question || citation.doc_id }} / {{ citation.score.toFixed(3) }}
               </small>
             </div>
             <div v-if="message.role === 'assistant'" class="feedback-actions">

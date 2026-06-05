@@ -3,7 +3,7 @@ import { readApiError } from './error'
 export interface KnowledgeRecord {
   id: number
   knowledge_id: string
-  title: string
+  question: string
   content: string
   category: string
   owner: string
@@ -13,7 +13,7 @@ export interface KnowledgeRecord {
 
 export interface KnowledgeInput {
   knowledge_id: string
-  title: string
+  question: string
   content: string
   category: string
   owner: string
