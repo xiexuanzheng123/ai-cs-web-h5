@@ -151,6 +151,56 @@ const activeRun = computed(() => {
 })
 
 const activeRunFailedItems = computed(() => activeRun.value?.items.filter((item) => !item.passed) ?? [])
+
+const trendRuns = computed(() => [...runHistory.value].reverse())
+
+const trendSummary = computed(() => {
+  const runs = runHistory.value
+  if (runs.length === 0) {
+    return {
+      averagePassRate: 0,
+      latestPassRate: 0,
+      averageDuration: 0,
+      failedTotal: 0,
+    }
+  }
+  const averagePassRate = runs.reduce((total, item) => total + item.pass_rate, 0) / runs.length
+  const averageDuration = Math.round(
+    runs.reduce((total, item) => total + item.duration_ms, 0) / runs.length,
+  )
+  const failedTotal = runs.reduce((total, item) => total + item.failed, 0)
+  return {
+    averagePassRate,
+    latestPassRate: runs[0]?.pass_rate ?? 0,
+    averageDuration,
+    failedTotal,
+  }
+})
+
+const failedCaseRanks = computed(() => {
+  const rankMap = new Map<string, { caseID: string; queryText: string; failedCount: number }>()
+  for (const run of runHistory.value) {
+    for (const item of run.items.filter((caseItem) => !caseItem.passed)) {
+      const existing = rankMap.get(item.case_id)
+      if (existing) {
+        existing.failedCount += 1
+      } else {
+        rankMap.set(item.case_id, {
+          caseID: item.case_id,
+          queryText: item.query_text,
+          failedCount: 1,
+        })
+      }
+    }
+  }
+  return [...rankMap.values()]
+    .sort((left, right) => right.failedCount - left.failedCount)
+    .slice(0, 5)
+})
+
+function trendBarWidth(value: number) {
+  return `${Math.max(4, Math.round((value || 0) * 100))}%`
+}
 </script>
 
 <template>
@@ -200,6 +250,56 @@ const activeRunFailedItems = computed(() => activeRun.value?.items.filter((item)
           {{ item.top1_knowledge_id || '-' }} / {{ item.top1_score.toFixed(3) }}
         </p>
       </article>
+    </section>
+
+    <section v-if="runHistory.length" class="eval-trend-panel">
+      <div class="eval-history-title">
+        <div>
+          <strong>回归趋势</strong>
+          <span>最近 {{ runHistory.length }} 次运行的通过率、耗时和失败分布</span>
+        </div>
+      </div>
+      <div class="eval-trend-metrics">
+        <div>
+          <span>最新通过率</span>
+          <strong>{{ formatPercent(trendSummary.latestPassRate) }}</strong>
+        </div>
+        <div>
+          <span>平均通过率</span>
+          <strong>{{ formatPercent(trendSummary.averagePassRate) }}</strong>
+        </div>
+        <div>
+          <span>平均耗时</span>
+          <strong>{{ trendSummary.averageDuration }} ms</strong>
+        </div>
+        <div>
+          <span>累计失败</span>
+          <strong>{{ trendSummary.failedTotal }}</strong>
+        </div>
+      </div>
+      <div class="eval-trend-layout">
+        <div class="eval-trend-chart">
+          <article v-for="item in trendRuns" :key="`trend-${item.run_id}`">
+            <span>{{ item.created_at }}</span>
+            <div>
+              <i :style="{ width: trendBarWidth(item.pass_rate) }"></i>
+            </div>
+            <b>{{ formatPercent(item.pass_rate) }}</b>
+            <em>{{ item.failed }} 失败</em>
+          </article>
+        </div>
+        <div class="eval-failure-rank">
+          <strong>失败排行</strong>
+          <p v-if="failedCaseRanks.length === 0" class="admin-muted">最近运行没有失败 case</p>
+          <article v-for="item in failedCaseRanks" :key="item.caseID">
+            <div>
+              <b>{{ item.queryText }}</b>
+              <span>{{ item.caseID }}</span>
+            </div>
+            <em>{{ item.failedCount }} 次</em>
+          </article>
+        </div>
+      </div>
     </section>
 
     <section class="eval-history-panel">

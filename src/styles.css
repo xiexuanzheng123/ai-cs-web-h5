@@ -1767,6 +1767,111 @@ button {
   color: #475569;
 }
 
+.eval-trend-panel {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #dfe6f0;
+  border-radius: 6px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.eval-trend-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid #dfe6f0;
+  border-radius: 6px;
+  background: #dfe6f0;
+}
+
+.eval-trend-metrics div {
+  display: grid;
+  gap: 4px;
+  background: #f8fafc;
+  padding: 10px 12px;
+}
+
+.eval-trend-metrics span,
+.eval-trend-chart span,
+.eval-trend-chart em,
+.eval-failure-rank span,
+.eval-failure-rank em {
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.eval-trend-metrics strong {
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.eval-trend-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr);
+  gap: 12px;
+}
+
+.eval-trend-chart,
+.eval-failure-rank {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  border: 1px solid #dfe6f0;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.eval-trend-chart article {
+  display: grid;
+  grid-template-columns: 150px minmax(120px, 1fr) 52px 56px;
+  align-items: center;
+  gap: 8px;
+}
+
+.eval-trend-chart div {
+  overflow: hidden;
+  height: 8px;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.eval-trend-chart i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #22c55e;
+}
+
+.eval-trend-chart b {
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.eval-failure-rank article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid #eef2f7;
+  padding-top: 8px;
+}
+
+.eval-failure-rank article div {
+  display: grid;
+  gap: 3px;
+}
+
+.eval-failure-rank b {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .eval-history-panel {
   display: grid;
   gap: 12px;
@@ -2247,6 +2352,8 @@ button {
     grid-template-columns: 1fr;
   }
 
+  .eval-trend-metrics,
+  .eval-trend-layout,
   .eval-history-layout,
   .trace-layout,
   .trace-summary-grid,
@@ -2259,6 +2366,15 @@ button {
 
   .trace-stage-table div {
     grid-template-columns: 1fr;
+  }
+
+  .eval-trend-chart article {
+    grid-template-columns: 1fr 52px;
+  }
+
+  .eval-trend-chart article span,
+  .eval-trend-chart article em {
+    grid-column: 1 / -1;
   }
 
   .trace-modal-mask {
