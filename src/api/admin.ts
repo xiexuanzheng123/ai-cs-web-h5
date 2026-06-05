@@ -88,7 +88,17 @@ export async function fetchTraceLogs(limit = 50): Promise<TraceLog[]> {
     throw await readApiError(response, '链路日志加载失败')
   }
   const payload = (await response.json()) as { logs: TraceLog[] }
-  return payload.logs
+  return (payload.logs ?? []).map(normalizeTraceLog)
+}
+
+function normalizeTraceLog(log: TraceLog): TraceLog {
+  return {
+    ...log,
+    total_latency_ms: log.total_latency_ms || 0,
+    stages: Array.isArray(log.stages) ? log.stages : [],
+    rag_matches: Array.isArray(log.rag_matches) ? log.rag_matches : [],
+    citations: Array.isArray(log.citations) ? log.citations : [],
+  }
 }
 
 export async function updateFeatureFlag(key: string, enabled: boolean): Promise<FeatureFlag> {

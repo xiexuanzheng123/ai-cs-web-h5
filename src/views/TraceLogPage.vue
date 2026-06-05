@@ -124,11 +124,20 @@ function formatStageName(name: string) {
     media_guide: '媒体引导',
     rule_match: '规则匹配',
     feature_flag: '灰度开关',
+    session_memory: '会话记忆',
+    session_memory_write: '记忆写入',
     rag_search: 'RAG 检索',
     llm_reply: 'LLM 回复',
+    response_validator: '回答校验',
     save_ai_message: 'AI 消息写入',
   }
   return names[name] || name
+}
+
+function formatCitationNames(item: TraceLog) {
+  const citations = Array.isArray(item.citations) ? item.citations : []
+  if (citations.length === 0) return '--'
+  return citations.map((citation) => citation.title || citation.doc_id).join('，')
 }
 
 function changePage(nextPage: number) {
@@ -253,10 +262,7 @@ function changePageSize(event: Event) {
                 <span class="route-tag" :class="routeClass(item)">{{ formatRoute(item) }}</span>
               </td>
               <td>
-                <span v-if="item.citations.length">
-                  {{ item.citations.map((citation) => citation.title || citation.doc_id).join('，') }}
-                </span>
-                <span v-else>--</span>
+                {{ formatCitationNames(item) }}
               </td>
               <td>{{ formatLatency(item.total_latency_ms) }}</td>
               <td>{{ item.handoff_required ? '是' : '否' }}</td>
