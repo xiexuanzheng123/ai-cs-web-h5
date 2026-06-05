@@ -5,6 +5,7 @@ const navItems = [
   { label: '基础看板', to: '/admin/dashboard' },
   { label: '规则配置', to: '/admin/rules' },
   { label: '知识库管理', to: '/admin/knowledge' },
+  { label: '分类管理', to: '/admin/categories' },
   { label: 'RAG 回归集', to: '/admin/rag-eval' },
   { label: '链路日志', to: '/admin/trace-logs' },
 ]

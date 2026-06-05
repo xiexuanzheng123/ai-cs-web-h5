@@ -34,6 +34,12 @@ export interface TraceRagMatch {
   chunk_text: string
 }
 
+export interface TraceCitation {
+  doc_id: string
+  title: string
+  score: number
+}
+
 export interface TraceLog {
   id: number
   trace_id: string
@@ -54,6 +60,7 @@ export interface TraceLog {
   total_latency_ms: number
   stages: TraceStage[]
   rag_matches: TraceRagMatch[]
+  citations: TraceCitation[]
   error_message: string
   created_at: string
 }

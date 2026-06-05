@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { requestHandoff, sendChatMessage, sendFeedback } from '../api/chat'
+import { requestHandoff, sendChatMessage, sendFeedback, type ChatResponse } from '../api/chat'
 import { getOrCreateSessionId, persistSessionId } from '../utils/session'
+
+type ChatCitation = ChatResponse['citations'][number]
 
 interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
+  citations?: ChatCitation[]
   transferToHuman?: boolean
   feedback?: 'thumbs_up' | 'thumbs_down'
 }
@@ -78,6 +81,7 @@ async function submitMessage(text = input.value, messageType: 'text' | 'image' |
       id: response.trace_id,
       role: 'assistant',
       content: response.content.text,
+      citations: response.citations ?? [],
       transferToHuman: response.handoff.required,
     })
   } catch (err) {
@@ -165,6 +169,12 @@ async function submitHandoff(reason = 'user_requested') {
           <div class="bubble">
             {{ message.content }}
             <div v-if="message.transferToHuman" class="handoff-tag">已转人工</div>
+            <div v-if="message.citations?.length" class="citation-list">
+              <span>参考来源</span>
+              <small v-for="citation in message.citations" :key="citation.doc_id">
+                {{ citation.title || citation.doc_id }} / {{ citation.score.toFixed(3) }}
+              </small>
+            </div>
             <div v-if="message.role === 'assistant'" class="feedback-actions">
               <span v-if="message.feedback" class="feedback-result">
                 {{ message.feedback === 'thumbs_up' ? '已标记有用' : '已反馈没用' }}

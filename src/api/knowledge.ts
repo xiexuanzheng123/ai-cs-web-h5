@@ -21,6 +21,22 @@ export interface KnowledgeInput {
   status: string
 }
 
+export interface CategoryRecord {
+  id: number
+  parent_id: number
+  name: string
+  level: number
+  path: string
+  sort_order: number
+  child_count: number
+}
+
+export interface CategoryInput {
+  parent_id: number
+  name: string
+  sort_order: number
+}
+
 export interface RAGEvalCaseRecord {
   id: number
   case_id: string
@@ -75,6 +91,52 @@ export async function updateKnowledge(id: number, input: KnowledgeInput): Promis
     throw await readApiError(response, '知识更新失败')
   }
   return response.json()
+}
+
+export async function fetchCategories(): Promise<CategoryRecord[]> {
+  const response = await fetch('/api/customer-service/admin/categories')
+  if (!response.ok) {
+    throw await readApiError(response, '分类加载失败')
+  }
+  const payload = (await response.json()) as { categories: CategoryRecord[] }
+  return payload.categories
+}
+
+export async function createCategory(input: CategoryInput): Promise<CategoryRecord> {
+  const response = await fetch('/api/customer-service/admin/categories', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  })
+  if (!response.ok) {
+    throw await readApiError(response, '分类创建失败')
+  }
+  return response.json()
+}
+
+export async function updateCategory(id: number, input: CategoryInput): Promise<CategoryRecord> {
+  const response = await fetch(`/api/customer-service/admin/categories/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  })
+  if (!response.ok) {
+    throw await readApiError(response, '分类更新失败')
+  }
+  return response.json()
+}
+
+export async function deleteCategory(id: number): Promise<void> {
+  const response = await fetch(`/api/customer-service/admin/categories/${id}`, {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    throw await readApiError(response, '分类删除失败')
+  }
 }
 
 export async function fetchRAGEvalCases(): Promise<RAGEvalCaseRecord[]> {

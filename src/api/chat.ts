@@ -18,6 +18,11 @@ export interface ChatResponse {
   intent: string
   route: string
   risk_level: string
+  citations: Array<{
+    doc_id: string
+    title: string
+    score: number
+  }>
   message_id: string
 }
 
