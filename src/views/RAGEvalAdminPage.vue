@@ -3,9 +3,13 @@ import { computed, onMounted, ref } from 'vue'
 import {
   createRAGEvalCase,
   fetchRAGEvalCases,
+  fetchRAGEvalRuns,
+  runRAGEvalCases,
   updateRAGEvalCase,
   type RAGEvalCaseInput,
   type RAGEvalCaseRecord,
+  type RAGEvalRunRecord,
+  type RAGEvalRunResult,
 } from '../api/knowledge'
 
 const emptyForm: RAGEvalCaseInput = {
@@ -22,8 +26,13 @@ const form = ref<RAGEvalCaseInput>({ ...emptyForm })
 const editingId = ref<number | null>(null)
 const loading = ref(false)
 const saving = ref(false)
+const running = ref(false)
+const historyLoading = ref(false)
 const filterStatus = ref('all')
 const error = ref('')
+const runResult = ref<RAGEvalRunResult | null>(null)
+const runHistory = ref<RAGEvalRunRecord[]>([])
+const activeRunID = ref('')
 
 const filteredCases = computed(() => {
   if (filterStatus.value === 'all') return cases.value
@@ -32,6 +41,7 @@ const filteredCases = computed(() => {
 
 onMounted(() => {
   void loadCases()
+  void loadRunHistory()
 })
 
 async function loadCases() {
@@ -101,6 +111,46 @@ async function toggleCase(item: RAGEvalCaseRecord) {
     error.value = err instanceof Error ? err.message : 'RAG case 状态更新失败'
   }
 }
+
+async function runEval() {
+  running.value = true
+  error.value = ''
+  try {
+    runResult.value = await runRAGEvalCases()
+    await loadRunHistory()
+    activeRunID.value = runHistory.value[0]?.run_id ?? ''
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'RAG 回归运行失败'
+  } finally {
+    running.value = false
+  }
+}
+
+async function loadRunHistory() {
+  historyLoading.value = true
+  try {
+    runHistory.value = await fetchRAGEvalRuns(10)
+    if (!activeRunID.value && runHistory.value.length > 0) {
+      activeRunID.value = runHistory.value[0].run_id
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'RAG 回归历史加载失败'
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+function formatPercent(value: number) {
+  return `${Math.round((value || 0) * 100)}%`
+}
+
+const failedRunItems = computed(() => runResult.value?.items.filter((item) => !item.passed) ?? [])
+
+const activeRun = computed(() => {
+  return runHistory.value.find((item) => item.run_id === activeRunID.value) ?? runHistory.value[0] ?? null
+})
+
+const activeRunFailedItems = computed(() => activeRun.value?.items.filter((item) => !item.passed) ?? [])
 </script>
 
 <template>
@@ -110,7 +160,95 @@ async function toggleCase(item: RAGEvalCaseRecord) {
         <strong>RAG 回归集</strong>
         <span>{{ cases.length }} 条 case / {{ filteredCases.length }} 条当前筛选</span>
       </div>
+      <button type="button" :disabled="running" @click="runEval">
+        {{ running ? '运行中' : '运行回归' }}
+      </button>
     </header>
+
+    <section v-if="runResult" class="eval-result-panel">
+      <div>
+        <span>总数</span>
+        <strong>{{ runResult.total }}</strong>
+      </div>
+      <div>
+        <span>通过</span>
+        <strong>{{ runResult.passed }}</strong>
+      </div>
+      <div>
+        <span>失败</span>
+        <strong>{{ runResult.failed }}</strong>
+      </div>
+      <div>
+        <span>通过率</span>
+        <strong>{{ formatPercent(runResult.pass_rate) }}</strong>
+      </div>
+      <div>
+        <span>耗时</span>
+        <strong>{{ runResult.duration_ms }} ms</strong>
+      </div>
+    </section>
+
+    <section v-if="failedRunItems.length" class="eval-failed-panel">
+      <strong>失败 Case</strong>
+      <article v-for="item in failedRunItems" :key="item.case_id">
+        <div>
+          <b>{{ item.query_text }}</b>
+          <span>{{ item.case_id }}</span>
+        </div>
+        <p>
+          {{ item.reason }}；期望 {{ item.expected_knowledge_id || '-' }}，Top1
+          {{ item.top1_knowledge_id || '-' }} / {{ item.top1_score.toFixed(3) }}
+        </p>
+      </article>
+    </section>
+
+    <section class="eval-history-panel">
+      <div class="eval-history-title">
+        <div>
+          <strong>最近运行历史</strong>
+          <span>保存每次回归批次，便于对比知识库和检索参数调整效果</span>
+        </div>
+        <button type="button" :disabled="historyLoading" @click="loadRunHistory">
+          {{ historyLoading ? '刷新中' : '刷新历史' }}
+        </button>
+      </div>
+      <p v-if="!historyLoading && runHistory.length === 0" class="admin-muted">暂无运行历史</p>
+      <div v-else class="eval-history-layout">
+        <div class="eval-run-list">
+          <button
+            v-for="item in runHistory"
+            :key="item.run_id"
+            type="button"
+            :class="{ active: item.run_id === activeRun?.run_id }"
+            @click="activeRunID = item.run_id"
+          >
+            <b>{{ formatPercent(item.pass_rate) }}</b>
+            <span>{{ item.created_at }}</span>
+            <small>{{ item.passed }}/{{ item.total }} 通过 · {{ item.duration_ms }} ms</small>
+          </button>
+        </div>
+        <div v-if="activeRun" class="eval-run-detail">
+          <div class="eval-run-summary">
+            <span>批次 {{ activeRun.run_id }}</span>
+            <b>{{ activeRun.passed }}/{{ activeRun.total }} 通过</b>
+            <em>{{ activeRun.duration_ms }} ms</em>
+          </div>
+          <div v-if="activeRunFailedItems.length" class="eval-run-failures">
+            <article v-for="item in activeRunFailedItems" :key="`${activeRun.run_id}-${item.case_id}`">
+              <div>
+                <b>{{ item.query_text }}</b>
+                <span>{{ item.case_id }}</span>
+              </div>
+              <p>
+                {{ item.reason }}；期望 {{ item.expected_knowledge_id || '-' }}，Top1
+                {{ item.top1_knowledge_id || '-' }} / {{ item.top1_score.toFixed(3) }}
+              </p>
+            </article>
+          </div>
+          <p v-else class="admin-muted">本次回归没有失败 case</p>
+        </div>
+      </div>
+    </section>
 
     <section class="rule-editor">
       <div class="field">

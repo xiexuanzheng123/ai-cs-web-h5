@@ -56,6 +56,34 @@ export interface RAGEvalCaseInput {
   status: string
 }
 
+export interface RAGEvalRunItem {
+  case_id: string
+  query_text: string
+  expected_knowledge_id: string
+  should_answer: boolean
+  matched: boolean
+  passed: boolean
+  reason: string
+  top1_knowledge_id: string
+  top1_score: number
+  duration_ms: number
+}
+
+export interface RAGEvalRunResult {
+  total: number
+  passed: number
+  failed: number
+  pass_rate: number
+  duration_ms: number
+  items: RAGEvalRunItem[]
+}
+
+export interface RAGEvalRunRecord extends RAGEvalRunResult {
+  id: number
+  run_id: string
+  created_at: string
+}
+
 export async function fetchKnowledge(): Promise<KnowledgeRecord[]> {
   const response = await fetch('/api/customer-service/admin/knowledge')
   if (!response.ok) {
@@ -177,4 +205,23 @@ export async function updateRAGEvalCase(
     throw await readApiError(response, 'RAG case 更新失败')
   }
   return response.json()
+}
+
+export async function runRAGEvalCases(): Promise<RAGEvalRunResult> {
+  const response = await fetch('/api/customer-service/admin/rag-eval-cases/run', {
+    method: 'POST',
+  })
+  if (!response.ok) {
+    throw await readApiError(response, 'RAG 回归运行失败')
+  }
+  return response.json()
+}
+
+export async function fetchRAGEvalRuns(limit = 10): Promise<RAGEvalRunRecord[]> {
+  const response = await fetch(`/api/customer-service/admin/rag-eval-runs?limit=${limit}`)
+  if (!response.ok) {
+    throw await readApiError(response, 'RAG 回归历史加载失败')
+  }
+  const payload = (await response.json()) as { runs: RAGEvalRunRecord[] }
+  return payload.runs
 }
