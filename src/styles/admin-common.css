@@ -12,7 +12,7 @@
   border-bottom-color: var(--el-border-color-lighter);
 }
 
-.toolbar-card :deep(.el-card__body) {
+.admin-layout .toolbar-card .el-card__body {
   padding: 14px 16px;
 }
 
@@ -36,7 +36,7 @@
   font-size: 12px;
 }
 
-.table-card :deep(.el-card__header) {
+.admin-layout .table-card .el-card__header {
   padding: 12px 16px;
 }
 
@@ -172,14 +172,6 @@
   --el-tag-bg-color: var(--el-color-info-light-9);
   --el-tag-border-color: var(--el-color-info-light-7);
   --el-tag-text-color: var(--el-color-info);
-}
-
-.admin-layout .metric-value--muted {
-  color: var(--el-color-primary) !important;
-}
-
-.admin-layout .metric-value--warn {
-  color: var(--el-color-warning) !important;
 }
 
 .admin-layout .el-pagination.is-background .btn-next,

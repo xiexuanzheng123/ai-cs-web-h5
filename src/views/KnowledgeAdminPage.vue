@@ -30,7 +30,6 @@ const emptyFilters = {
 }
 
 const records = ref<KnowledgeRecord[]>([])
-const selectedRows = ref<KnowledgeRecord[]>([])
 const form = ref<KnowledgeInput>({ ...emptyForm })
 const editingId = ref<number | null>(null)
 const loading = ref(false)
@@ -79,7 +78,6 @@ async function loadKnowledge() {
   loading.value = true
   try {
     records.value = await fetchKnowledge()
-    selectedRows.value = []
     page.current = 1
   } catch (err) {
     ElMessage.error(err instanceof Error ? err.message : '知识库加载失败')
@@ -228,8 +226,6 @@ function contentSummary(content: string) {
         <div class="toolbar-actions">
           <el-button @click="resetFilters">重置</el-button>
           <el-button type="primary" :loading="loading" @click="loadKnowledge">搜索</el-button>
-          <el-button :disabled="selectedRows.length === 0">批量删除({{ selectedRows.length }})</el-button>
-          <el-button>导入 Excel</el-button>
           <el-button type="primary" @click="openCreateDialog">新建</el-button>
         </div>
       </div>
@@ -248,9 +244,7 @@ function contentSummary(content: string) {
         border
         :data="pagedRecords"
         empty-text="暂无知识"
-        @selection-change="(rows: KnowledgeRecord[]) => (selectedRows = rows)"
       >
-        <el-table-column type="selection" width="48" />
         <el-table-column label="序号" width="70">
           <template #default="{ $index }">{{ (page.current - 1) * page.pageSize + $index + 1 }}</template>
         </el-table-column>

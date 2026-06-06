@@ -23,16 +23,18 @@ const feedbackLoadingId = ref('')
 const handoffLoading = ref(false)
 const messages = ref<ChatMessage[]>([
   {
-    id: 'hello-1',
-    role: 'assistant',
-    content: '非常对不起哦，不知道怎么回答这个问题呢，我会努力学习的。',
-  },
-  {
-    id: 'hello-2',
+    id: 'welcome',
     role: 'assistant',
     content: '您好，很高兴为您服务，请问有什么可以帮您？',
   },
 ])
+
+const timestamp = computed(() => {
+  const now = new Date()
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  return `${hours}:${minutes}`
+})
 
 const categories = [
   { label: '账号问题', icon: 'account' },
@@ -42,7 +44,7 @@ const categories = [
 ]
 
 const faqs = ['密码错误过多', '找回账号密码', '账号异常设备登录', '账号违规举报']
-const quickActions = ['转人工', '热门活动', '社区活动', '图片', '语音']
+const quickActions = ['转人工']
 
 const canSend = computed(() => input.value.trim().length > 0 && !loading.value)
 
@@ -140,17 +142,7 @@ async function submitHandoff(reason = 'user_requested') {
 function handleQuickAction(action: string) {
   if (action === '转人工') {
     void submitHandoff()
-    return
   }
-  if (action === '图片') {
-    void submitMessage('[图片]', 'image')
-    return
-  }
-  if (action === '语音') {
-    void submitMessage('[语音]', 'audio')
-    return
-  }
-  void submitMessage(action)
 }
 </script>
 
@@ -167,7 +159,7 @@ function handleQuickAction(action: string) {
     </header>
 
     <section class="chat-body">
-      <time class="timestamp">19:21</time>
+      <time class="timestamp">{{ timestamp }}</time>
 
       <div class="messages">
         <div
@@ -265,8 +257,6 @@ function handleQuickAction(action: string) {
         placeholder="请详细描述您的问题"
         @keyup.enter="submitMessage()"
       />
-      <button type="button" class="round-button" aria-label="表情">☺</button>
-      <button type="button" class="round-button" aria-label="添加">＋</button>
       <button
         type="button"
         class="send-button"
