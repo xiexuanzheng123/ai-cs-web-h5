@@ -264,7 +264,7 @@ function formatRagQuestion(match: TraceLog['rag_matches'][number]) {
       </div>
     </el-card>
 
-    <el-drawer v-model="drawerVisible" :with-header="false" size="62%" destroy-on-close>
+    <el-drawer v-model="drawerVisible" :with-header="false" size="62%" destroy-on-close class="trace-detail-drawer">
       <template v-if="detailLog">
         <div class="drawer-header">
           <div>
@@ -274,63 +274,70 @@ function formatRagQuestion(match: TraceLog['rag_matches'][number]) {
           <el-button @click="closeDetail">关闭</el-button>
         </div>
 
-        <el-descriptions :column="3" border class="detail-desc">
-          <el-descriptions-item label="总耗时">{{ formatLatency(detailLog.total_latency_ms) }}</el-descriptions-item>
-          <el-descriptions-item label="路由">{{ formatRoute(detailLog) }}</el-descriptions-item>
-          <el-descriptions-item label="意图">{{ detailLog.intent || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="模型">{{ detailLog.model_used || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="转人工">{{ detailLog.handoff_required ? '是' : '否' }}</el-descriptions-item>
-          <el-descriptions-item label="风险">{{ detailLog.risk_level || '-' }}</el-descriptions-item>
-        </el-descriptions>
+        <div class="detail-body">
+          <el-descriptions :column="3" border class="detail-desc">
+            <el-descriptions-item label="总耗时">{{ formatLatency(detailLog.total_latency_ms) }}</el-descriptions-item>
+            <el-descriptions-item label="路由">{{ formatRoute(detailLog) }}</el-descriptions-item>
+            <el-descriptions-item label="意图">{{ detailLog.intent || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="模型">{{ detailLog.model_used || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="转人工">{{ detailLog.handoff_required ? '是' : '否' }}</el-descriptions-item>
+            <el-descriptions-item label="风险">{{ detailLog.risk_level || '-' }}</el-descriptions-item>
+          </el-descriptions>
 
-        <el-alert
-          v-if="detailLog.error_message"
-          :title="detailLog.error_message"
-          type="warning"
-          show-icon
-          :closable="false"
-          class="detail-alert"
-        />
+          <el-alert
+            v-if="detailLog.error_message"
+            :title="detailLog.error_message"
+            type="warning"
+            show-icon
+            :closable="false"
+            class="detail-alert"
+          />
 
-        <el-card shadow="never" class="detail-section">
-          <template #header><strong>回复内容</strong></template>
-          <p>{{ detailLog.response_text || '无回复内容' }}</p>
-        </el-card>
+          <el-card shadow="never" class="detail-section detail-section--question">
+            <template #header><strong>用户问题</strong></template>
+            <p class="detail-text">{{ detailLog.user_message || '无用户问题' }}</p>
+          </el-card>
 
-        <el-card shadow="never" class="detail-section">
-          <template #header><strong>阶段耗时</strong></template>
-          <el-table border :data="detailStages" size="small" empty-text="无阶段数据">
-            <el-table-column label="阶段">
-              <template #default="{ row }">{{ formatStageName(row.name) }}</template>
-            </el-table-column>
-            <el-table-column prop="status" label="状态" width="100" />
-            <el-table-column label="耗时" width="100">
-              <template #default="{ row }">{{ formatLatency(row.latency_ms) }}</template>
-            </el-table-column>
-            <el-table-column prop="detail" label="详情" min-width="180" show-overflow-tooltip />
-          </el-table>
-        </el-card>
+          <el-card shadow="never" class="detail-section detail-section--answer">
+            <template #header><strong>回复内容</strong></template>
+            <p class="detail-text">{{ detailLog.response_text || '无回复内容' }}</p>
+          </el-card>
 
-        <el-card shadow="never" class="detail-section">
-          <template #header><strong>RAG 检索</strong></template>
-          <el-empty v-if="detailRagMatches.length === 0" description="没有召回候选" />
-          <div v-for="match in detailRagMatches" :key="match.chunk_id" class="match-block">
-            <strong>{{ formatRagQuestion(match) }}</strong>
-            <div class="sub-text">
-              {{ match.knowledge_id }} / {{ match.chunk_id }} / {{ match.score.toFixed(3) }}
+          <el-card shadow="never" class="detail-section detail-section--timing">
+            <template #header><strong>阶段耗时</strong></template>
+            <el-table border :data="detailStages" size="small" empty-text="无阶段数据" class="compact-table">
+              <el-table-column label="阶段">
+                <template #default="{ row }">{{ formatStageName(row.name) }}</template>
+              </el-table-column>
+              <el-table-column prop="status" label="状态" width="100" />
+              <el-table-column label="耗时" width="100">
+                <template #default="{ row }">{{ formatLatency(row.latency_ms) }}</template>
+              </el-table-column>
+              <el-table-column prop="detail" label="详情" min-width="180" show-overflow-tooltip />
+            </el-table>
+          </el-card>
+
+          <el-card shadow="never" class="detail-section detail-section--rag">
+            <template #header><strong>RAG 检索</strong></template>
+            <el-empty v-if="detailRagMatches.length === 0" description="没有召回候选" />
+            <div v-for="match in detailRagMatches" :key="match.chunk_id" class="match-block">
+              <strong>{{ formatRagQuestion(match) }}</strong>
+              <div class="sub-text">
+                {{ match.knowledge_id }} / {{ match.chunk_id }} / {{ match.score.toFixed(3) }}
+              </div>
+              <p>{{ match.chunk_text || match.content }}</p>
             </div>
-            <p>{{ match.chunk_text || match.content }}</p>
-          </div>
-        </el-card>
+          </el-card>
 
-        <el-card shadow="never" class="detail-section">
-          <template #header><strong>引用来源</strong></template>
-          <el-empty v-if="detailCitations.length === 0" description="本次回答没有引用来源" />
-          <div v-for="citation in detailCitations" :key="citation.doc_id" class="match-block">
-            <strong>{{ citation.question || citation.doc_id }}</strong>
-            <div class="sub-text">{{ citation.doc_id }} / {{ citation.score.toFixed(3) }}</div>
-          </div>
-        </el-card>
+          <el-card shadow="never" class="detail-section detail-section--citations">
+            <template #header><strong>引用来源</strong></template>
+            <el-empty v-if="detailCitations.length === 0" description="本次回答没有引用来源" />
+            <div v-for="citation in detailCitations" :key="citation.doc_id" class="match-block">
+              <strong>{{ citation.question || citation.doc_id }}</strong>
+              <div class="sub-text">{{ citation.doc_id }} / {{ citation.score.toFixed(3) }}</div>
+            </div>
+          </el-card>
+        </div>
       </template>
     </el-drawer>
   </div>
@@ -353,49 +360,124 @@ function formatRagQuestion(match: TraceLog['rag_matches'][number]) {
   margin-top: 16px;
 }
 
+:deep(.trace-detail-drawer .el-drawer__body) {
+  padding: 14px;
+  background: #f6f8fb;
+}
+
 .drawer-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 16px;
+  margin: -2px 0 10px;
 }
 
 .drawer-header h3 {
   margin: 0;
+  font-size: 18px;
+  line-height: 24px;
 }
 
 .drawer-header p {
-  margin: 6px 0 0;
+  margin: 3px 0 0;
   color: #64748b;
   font-size: 13px;
   word-break: break-all;
 }
 
-.detail-desc {
-  margin-bottom: 16px;
+.detail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.detail-alert {
-  margin-bottom: 16px;
+.detail-desc {
+  background: #fff;
+}
+
+:deep(.detail-desc .el-descriptions__cell) {
+  padding: 8px 10px;
+}
+
+:deep(.detail-desc .el-descriptions__label) {
+  background: #eef3f8;
+  color: #334155;
+  font-weight: 600;
 }
 
 .detail-section {
-  margin-bottom: 16px;
+  overflow: hidden;
+  border: 1px solid #dbe4ee;
+  border-radius: 6px;
+}
+
+:deep(.detail-section .el-card__header) {
+  padding: 9px 14px;
+  border-bottom: 1px solid #dbe4ee;
+  color: #334155;
+}
+
+:deep(.detail-section .el-card__body) {
+  padding: 12px 14px;
+}
+
+.detail-section--question {
+  background: #f7fbff;
+  border-left: 4px solid #3b82f6;
+}
+
+.detail-section--answer {
+  background: #f8fcf8;
+  border-left: 4px solid #22c55e;
+}
+
+.detail-section--timing {
+  background: #fffaf2;
+  border-left: 4px solid #f59e0b;
+}
+
+.detail-section--rag {
+  background: #f8f7ff;
+  border-left: 4px solid #8b5cf6;
+}
+
+.detail-section--citations {
+  background: #f8fafc;
+  border-left: 4px solid #64748b;
+}
+
+.detail-text {
+  margin: 0;
+  color: #1e293b;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.compact-table {
+  --el-table-header-bg-color: #f1f5f9;
+}
+
+:deep(.compact-table .el-table__cell) {
+  padding: 5px 0;
 }
 
 .match-block {
-  padding: 10px 0;
-  border-bottom: 1px solid #f1f5f9;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 72%);
 }
 
-.match-block:last-child {
-  border-bottom: 0;
+.match-block + .match-block {
+  margin-top: 8px;
 }
 
 .match-block p {
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   color: #475569;
-  line-height: 1.6;
+  line-height: 1.55;
+  white-space: pre-wrap;
 }
 </style>
