@@ -75,6 +75,7 @@ export interface RAGEvalRunResult {
   failed: number
   pass_rate: number
   duration_ms: number
+  quality_summary: RAGEvalQualitySummary
   items: RAGEvalRunItem[]
 }
 
@@ -82,6 +83,26 @@ export interface RAGEvalRunRecord extends RAGEvalRunResult {
   id: number
   run_id: string
   created_at: string
+}
+
+export interface RAGEvalQualitySummary {
+  top1_hit_rate: number
+  top3_hit_rate: number
+  should_answer_miss_count: number
+  should_not_answer_hit_count: number
+  missing_citation_count: number
+  suspected_hallucination: number
+  major_unsafe_count: number
+  major_unsafe_rate: number
+  average_case_latency_ms: number
+}
+
+export interface RAGEvalSeedResult {
+  target_total: number
+  before_total: number
+  created: number
+  negative_created: number
+  after_total: number
 }
 
 export async function fetchKnowledge(): Promise<KnowledgeRecord[]> {
@@ -217,6 +238,19 @@ export async function runRAGEvalCases(): Promise<RAGEvalRunResult> {
   return response.json()
 }
 
+export async function seedRAGEvalCases(targetTotal = 200): Promise<RAGEvalSeedResult> {
+  const response = await fetch(
+    `/api/customer-service/admin/rag-eval-cases/seed?target_total=${targetTotal}`,
+    {
+      method: 'POST',
+    },
+  )
+  if (!response.ok) {
+    throw await readApiError(response, 'RAG 回归集自动补齐失败')
+  }
+  return response.json()
+}
+
 export async function fetchRAGEvalRuns(limit = 10): Promise<RAGEvalRunRecord[]> {
   const response = await fetch(`/api/customer-service/admin/rag-eval-runs?limit=${limit}`)
   if (!response.ok) {
@@ -224,4 +258,13 @@ export async function fetchRAGEvalRuns(limit = 10): Promise<RAGEvalRunRecord[]> 
   }
   const payload = (await response.json()) as { runs: RAGEvalRunRecord[] }
   return payload.runs
+}
+
+export async function runFullRAGEval(targetTotal = 200): Promise<{
+  seed: RAGEvalSeedResult
+  run: RAGEvalRunResult
+}> {
+  const seed = await seedRAGEvalCases(targetTotal)
+  const run = await runRAGEvalCases()
+  return { seed, run }
 }

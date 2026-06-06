@@ -1711,9 +1711,21 @@ button {
   margin-top: 24px;
 }
 
+.eval-header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.eval-header-actions button.primary {
+  border-color: #2f80ed;
+  background: #2f80ed;
+  color: #fff;
+}
+
 .eval-result-panel {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(9, minmax(0, 1fr));
   gap: 1px;
   overflow: hidden;
   border: 1px solid #dfe6f0;

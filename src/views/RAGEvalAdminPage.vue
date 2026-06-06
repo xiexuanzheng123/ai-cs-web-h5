@@ -4,7 +4,9 @@ import {
   createRAGEvalCase,
   fetchRAGEvalCases,
   fetchRAGEvalRuns,
+  runFullRAGEval,
   runRAGEvalCases,
+  seedRAGEvalCases,
   updateRAGEvalCase,
   type RAGEvalCaseInput,
   type RAGEvalCaseRecord,
@@ -27,12 +29,15 @@ const editingId = ref<number | null>(null)
 const loading = ref(false)
 const saving = ref(false)
 const running = ref(false)
+const seeding = ref(false)
+const fullRunning = ref(false)
 const historyLoading = ref(false)
 const filterStatus = ref('all')
 const error = ref('')
 const runResult = ref<RAGEvalRunResult | null>(null)
 const runHistory = ref<RAGEvalRunRecord[]>([])
 const activeRunID = ref('')
+const seedMessage = ref('')
 
 const filteredCases = computed(() => {
   if (filterStatus.value === 'all') return cases.value
@@ -126,6 +131,51 @@ async function runEval() {
   }
 }
 
+async function seedCases() {
+  seeding.value = true
+  error.value = ''
+  seedMessage.value = ''
+  try {
+    const result = await seedRAGEvalCases(200)
+    seedMessage.value = formatSeedMessage(result)
+    await loadCases()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'RAG 回归集自动补齐失败'
+  } finally {
+    seeding.value = false
+  }
+}
+
+async function runFullRegression() {
+  fullRunning.value = true
+  running.value = true
+  error.value = ''
+  seedMessage.value = ''
+  try {
+    const { seed, run } = await runFullRAGEval(200)
+    seedMessage.value = formatSeedMessage(seed)
+    runResult.value = run
+    await loadCases()
+    await loadRunHistory()
+    activeRunID.value = runHistory.value[0]?.run_id ?? ''
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'RAG 一键回归失败'
+  } finally {
+    fullRunning.value = false
+    running.value = false
+  }
+}
+
+function formatSeedMessage(result: {
+  target_total: number
+  before_total: number
+  created: number
+  negative_created: number
+  after_total: number
+}) {
+  return `目标 ${result.target_total} 条正例，原有 ${result.before_total} 条，新增正例 ${result.created} 条、负例 ${result.negative_created} 条，当前 ${result.after_total} 条`
+}
+
 async function loadRunHistory() {
   historyLoading.value = true
   try {
@@ -142,6 +192,22 @@ async function loadRunHistory() {
 
 function formatPercent(value: number) {
   return `${Math.round((value || 0) * 100)}%`
+}
+
+function qualityOf(result: RAGEvalRunResult | RAGEvalRunRecord | null) {
+  return (
+    result?.quality_summary ?? {
+      top1_hit_rate: 0,
+      top3_hit_rate: 0,
+      should_answer_miss_count: 0,
+      should_not_answer_hit_count: 0,
+      missing_citation_count: 0,
+      suspected_hallucination: 0,
+      major_unsafe_count: 0,
+      major_unsafe_rate: 0,
+      average_case_latency_ms: 0,
+    }
+  )
 }
 
 const failedRunItems = computed(() => runResult.value?.items.filter((item) => !item.passed) ?? [])
@@ -210,10 +276,20 @@ function trendBarWidth(value: number) {
         <strong>RAG 回归集</strong>
         <span>{{ cases.length }} 条 case / {{ filteredCases.length }} 条当前筛选</span>
       </div>
-      <button type="button" :disabled="running" @click="runEval">
-        {{ running ? '运行中' : '运行回归' }}
-      </button>
+      <div class="eval-header-actions">
+        <button type="button" class="primary" :disabled="fullRunning" @click="runFullRegression">
+          {{ fullRunning ? '一键回归中' : '一键回归' }}
+        </button>
+        <button type="button" :disabled="seeding || fullRunning" @click="seedCases">
+          {{ seeding ? '补齐中' : '自动补齐 200 条' }}
+        </button>
+        <button type="button" :disabled="running || fullRunning" @click="runEval">
+          {{ running ? '运行中' : '运行回归' }}
+        </button>
+      </div>
     </header>
+
+    <p v-if="seedMessage" class="notice">{{ seedMessage }}</p>
 
     <section v-if="runResult" class="eval-result-panel">
       <div>
@@ -235,6 +311,22 @@ function trendBarWidth(value: number) {
       <div>
         <span>耗时</span>
         <strong>{{ runResult.duration_ms }} ms</strong>
+      </div>
+      <div>
+        <span>Top1 命中</span>
+        <strong>{{ formatPercent(qualityOf(runResult).top1_hit_rate) }}</strong>
+      </div>
+      <div>
+        <span>Top3 命中</span>
+        <strong>{{ formatPercent(qualityOf(runResult).top3_hit_rate) }}</strong>
+      </div>
+      <div>
+        <span>疑似幻觉</span>
+        <strong>{{ qualityOf(runResult).suspected_hallucination }}</strong>
+      </div>
+      <div>
+        <span>Major/Unsafe</span>
+        <strong>{{ formatPercent(qualityOf(runResult).major_unsafe_rate) }}</strong>
       </div>
     </section>
 
