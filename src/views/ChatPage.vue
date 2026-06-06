@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { requestHandoff, sendChatMessage, sendFeedback, type ChatResponse } from '../api/chat'
 import { getOrCreateSessionId, persistSessionId } from '../utils/session'
 
@@ -20,7 +21,6 @@ const input = ref('')
 const loading = ref(false)
 const feedbackLoadingId = ref('')
 const handoffLoading = ref(false)
-const error = ref('')
 const messages = ref<ChatMessage[]>([
   {
     id: 'hello-1',
@@ -35,14 +35,14 @@ const messages = ref<ChatMessage[]>([
 ])
 
 const categories = [
-  { label: '账号问题', icon: 'user' },
-  { label: '会员问题', icon: 'heart' },
-  { label: '功能咨询', icon: 'store' },
+  { label: '账号问题', icon: 'account' },
+  { label: '会员问题', icon: 'member' },
+  { label: '功能咨询', icon: 'feature' },
   { label: '其他', icon: 'more' },
 ]
 
 const faqs = ['密码错误过多', '找回账号密码', '账号异常设备登录', '账号违规举报']
-const quickActions = ['转人工', '热门活动', '社区活动']
+const quickActions = ['转人工', '热门活动', '社区活动', '图片', '语音']
 
 const canSend = computed(() => input.value.trim().length > 0 && !loading.value)
 
@@ -58,14 +58,9 @@ async function submitMessage(text = input.value, messageType: 'text' | 'image' |
   const content = text.trim()
   if (!content || loading.value) return
 
-  error.value = ''
   input.value = ''
   const messageId = newMessageId()
-  messages.value.push({
-    id: messageId,
-    role: 'user',
-    content,
-  })
+  messages.value.push({ id: messageId, role: 'user', content })
 
   loading.value = true
   try {
@@ -86,7 +81,7 @@ async function submitMessage(text = input.value, messageType: 'text' | 'image' |
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : '请求失败，请稍后重试'
-    error.value = message
+    ElMessage.error(message)
     messages.value.push({
       id: `error-${Date.now()}`,
       role: 'assistant',
@@ -100,7 +95,6 @@ async function submitMessage(text = input.value, messageType: 'text' | 'image' |
 async function submitFeedback(message: ChatMessage, rating: 'thumbs_up' | 'thumbs_down') {
   if (message.role !== 'assistant' || message.feedback || feedbackLoadingId.value) return
 
-  error.value = ''
   feedbackLoadingId.value = message.id
   try {
     await sendFeedback({
@@ -111,8 +105,9 @@ async function submitFeedback(message: ChatMessage, rating: 'thumbs_up' | 'thumb
       actionTaken: rating === 'thumbs_down' ? 'handoff' : '',
     })
     message.feedback = rating
+    ElMessage.success(rating === 'thumbs_up' ? '感谢反馈' : '已记录反馈')
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '反馈失败，请稍后重试'
+    ElMessage.error(err instanceof Error ? err.message : '反馈失败，请稍后重试')
   } finally {
     feedbackLoadingId.value = ''
   }
@@ -121,7 +116,6 @@ async function submitFeedback(message: ChatMessage, rating: 'thumbs_up' | 'thumb
 async function submitHandoff(reason = 'user_requested') {
   if (handoffLoading.value) return
 
-  error.value = ''
   handoffLoading.value = true
   try {
     await requestHandoff({
@@ -135,18 +129,35 @@ async function submitHandoff(reason = 'user_requested') {
       content: '已为您转接智齿人工客服，请继续在人工客服窗口处理。',
       transferToHuman: true,
     })
+    ElMessage.success('已提交转人工')
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '转人工失败，请稍后重试'
+    ElMessage.error(err instanceof Error ? err.message : '转人工失败，请稍后重试')
   } finally {
     handoffLoading.value = false
   }
+}
+
+function handleQuickAction(action: string) {
+  if (action === '转人工') {
+    void submitHandoff()
+    return
+  }
+  if (action === '图片') {
+    void submitMessage('[图片]', 'image')
+    return
+  }
+  if (action === '语音') {
+    void submitMessage('[语音]', 'audio')
+    return
+  }
+  void submitMessage(action)
 }
 </script>
 
 <template>
   <main class="phone-shell">
     <header class="chat-header">
-      <button class="icon-button" aria-label="返回">‹</button>
+      <button type="button" class="icon-button" aria-label="返回">‹</button>
       <div class="bot-avatar">唱</div>
       <div class="title">
         <strong>小唱机器人</strong>
@@ -167,8 +178,8 @@ async function submitHandoff(reason = 'user_requested') {
         >
           <div v-if="message.role === 'assistant'" class="mini-avatar">唱</div>
           <div class="bubble">
-            {{ message.content }}
-            <div v-if="message.transferToHuman" class="handoff-tag">已转人工</div>
+            <p class="bubble-text">{{ message.content }}</p>
+            <span v-if="message.transferToHuman" class="handoff-tag">已转人工</span>
             <div v-if="message.citations?.length" class="citation-list">
               <span>参考来源</span>
               <small v-for="citation in message.citations" :key="citation.doc_id">
@@ -181,12 +192,16 @@ async function submitHandoff(reason = 'user_requested') {
               </span>
               <template v-else>
                 <button
+                  type="button"
+                  class="feedback-btn"
                   :disabled="feedbackLoadingId === message.id"
                   @click="submitFeedback(message, 'thumbs_up')"
                 >
                   有用
                 </button>
                 <button
+                  type="button"
+                  class="feedback-btn"
                   :disabled="feedbackLoadingId === message.id"
                   @click="submitFeedback(message, 'thumbs_down')"
                 >
@@ -207,18 +222,25 @@ async function submitHandoff(reason = 'user_requested') {
         <button
           v-for="category in categories"
           :key="category.label"
+          type="button"
           class="category-card"
           @click="submitMessage(category.label)"
         >
-          <span class="category-icon" :data-icon="category.icon"></span>
-          <span>{{ category.label }}</span>
+          <span class="category-icon" :data-icon="category.icon" aria-hidden="true"></span>
+          <span class="category-label">{{ category.label }}</span>
         </button>
       </section>
 
       <section class="faq-panel" aria-label="常见问题">
-        <button v-for="faq in faqs" :key="faq" class="faq-item" @click="submitMessage(faq)">
-          <span>{{ faq }}</span>
-          <span class="chevron">›</span>
+        <button
+          v-for="faq in faqs"
+          :key="faq"
+          type="button"
+          class="faq-item"
+          @click="submitMessage(faq)"
+        >
+          <span class="faq-text">{{ faq }}</span>
+          <span class="chevron" aria-hidden="true">›</span>
         </button>
       </section>
 
@@ -226,27 +248,33 @@ async function submitHandoff(reason = 'user_requested') {
         <button
           v-for="action in quickActions"
           :key="action"
+          type="button"
+          class="quick-action-btn"
           :disabled="action === '转人工' && handoffLoading"
-          @click="action === '转人工' ? submitHandoff() : submitMessage(action)"
+          @click="handleQuickAction(action)"
         >
           {{ action }}
         </button>
-        <button @click="submitMessage('[图片]', 'image')">图片</button>
-        <button @click="submitMessage('[语音]', 'audio')">语音</button>
       </section>
     </section>
 
     <footer class="composer">
-      <p v-if="error" class="error">{{ error }}</p>
       <input
         v-model="input"
         type="text"
         placeholder="请详细描述您的问题"
         @keyup.enter="submitMessage()"
       />
-      <button class="round-button" aria-label="表情">☺</button>
-      <button class="round-button" aria-label="添加">＋</button>
-      <button class="send-button" :disabled="!canSend" @click="submitMessage()">发送</button>
+      <button type="button" class="round-button" aria-label="表情">☺</button>
+      <button type="button" class="round-button" aria-label="添加">＋</button>
+      <button
+        type="button"
+        class="send-button"
+        :disabled="!canSend"
+        @click="submitMessage()"
+      >
+        {{ loading ? '...' : '发送' }}
+      </button>
     </footer>
   </main>
 </template>

@@ -1,0 +1,208 @@
+.admin-page {
+  display: grid;
+  gap: 16px;
+}
+
+.admin-layout .el-card {
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 10px;
+}
+
+.admin-layout .el-card__header {
+  border-bottom-color: var(--el-border-color-lighter);
+}
+
+.toolbar-card :deep(.el-card__body) {
+  padding: 14px 16px;
+}
+
+.toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sub-text {
+  margin-top: 4px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
+.table-card :deep(.el-card__header) {
+  padding: 12px 16px;
+}
+
+.table-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.table-card-header span {
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
+
+.admin-layout .el-table {
+  --el-table-border-color: var(--el-border-color);
+  --el-table-header-bg-color: #f4f7fa;
+  --el-table-row-hover-bg-color: #f8fafc;
+}
+
+.admin-layout .el-table th.el-table__cell {
+  color: var(--el-text-color-regular);
+  font-weight: 600;
+}
+
+/* 表格全边框 */
+.admin-layout .el-table--border .el-table__cell {
+  border-right: 1px solid var(--el-table-border-color);
+  border-bottom: 1px solid var(--el-table-border-color);
+}
+
+.admin-layout .el-table--border::before,
+.admin-layout .el-table--border::after,
+.admin-layout .el-table__inner-wrapper::before,
+.admin-layout .el-table__inner-wrapper::after {
+  background-color: var(--el-table-border-color);
+}
+
+.admin-layout .el-table--border .el-table__footer-wrapper tr:first-child td:first-child,
+.admin-layout .el-table--border .el-table__footer-wrapper tr:first-child th:first-child,
+.admin-layout .el-table--border .el-table__body-wrapper tr:first-child td:first-child,
+.admin-layout .el-table--border .el-table__body-wrapper tr:first-child th:first-child {
+  border-left: 1px solid var(--el-table-border-color);
+}
+
+.admin-layout .el-pagination.is-background .el-pager li.is-active {
+  background-color: var(--el-color-primary);
+  color: #ffffff;
+}
+
+/* 实心主按钮：白字 + 灰蓝底 */
+.admin-layout .el-button.el-button--primary:not(.is-plain):not(.is-link):not(.is-text),
+.admin-page .el-button.el-button--primary:not(.is-plain):not(.is-link):not(.is-text) {
+  --el-button-text-color: #ffffff;
+  --el-button-hover-text-color: #ffffff;
+  --el-button-active-text-color: #ffffff;
+  --el-button-disabled-text-color: rgba(255, 255, 255, 0.85);
+  --el-button-bg-color: var(--el-color-primary);
+  --el-button-border-color: var(--el-color-primary);
+  --el-button-hover-bg-color: var(--el-color-primary-light-3);
+  --el-button-hover-border-color: var(--el-color-primary-light-3);
+  --el-button-active-bg-color: var(--el-color-primary-dark-2);
+  --el-button-active-border-color: var(--el-color-primary-dark-2);
+  color: #ffffff !important;
+  background-color: var(--el-color-primary) !important;
+  border-color: var(--el-color-primary) !important;
+}
+
+.admin-layout .el-button.el-button--primary:not(.is-plain):not(.is-link):not(.is-text):hover,
+.admin-layout .el-button.el-button--primary:not(.is-plain):not(.is-link):not(.is-text):focus,
+.admin-layout .el-button.el-button--primary:not(.is-plain):not(.is-link):not(.is-text):active,
+.admin-page .el-button.el-button--primary:not(.is-plain):not(.is-link):not(.is-text):hover,
+.admin-page .el-button.el-button--primary:not(.is-plain):not(.is-link):not(.is-text):focus,
+.admin-page .el-button.el-button--primary:not(.is-plain):not(.is-link):not(.is-text):active {
+  color: #ffffff !important;
+}
+
+.admin-layout .el-button.el-button--primary.is-disabled:not(.is-plain):not(.is-link):not(.is-text),
+.admin-page .el-button.el-button--primary.is-disabled:not(.is-plain):not(.is-link):not(.is-text) {
+  color: rgba(255, 255, 255, 0.85) !important;
+  opacity: 0.7;
+}
+
+.admin-layout .el-button.el-button--primary:not(.is-plain):not(.is-link):not(.is-text) > span,
+.admin-page .el-button.el-button--primary:not(.is-plain):not(.is-link):not(.is-text) > span {
+  color: inherit !important;
+}
+
+/* 朴素主按钮：浅底深字 */
+.admin-layout .el-button--primary.is-plain,
+.admin-page .el-button--primary.is-plain {
+  --el-button-text-color: var(--el-color-primary-dark-2);
+  --el-button-hover-text-color: var(--el-color-primary-dark-2);
+  --el-button-active-text-color: var(--el-color-primary-dark-2);
+  --el-button-bg-color: var(--el-color-primary-light-9);
+  --el-button-border-color: var(--el-color-primary-light-5);
+  --el-button-hover-bg-color: var(--el-color-primary-light-8);
+  --el-button-hover-border-color: var(--el-color-primary-light-3);
+  --el-button-active-bg-color: var(--el-color-primary-light-7);
+  --el-button-active-border-color: var(--el-color-primary);
+}
+
+.admin-layout .el-button.is-link {
+  --el-button-text-color: var(--el-color-primary);
+  --el-button-hover-link-text-color: var(--el-color-primary-dark-2);
+}
+
+.admin-layout .el-button.is-link.el-button--danger {
+  --el-button-text-color: var(--el-color-danger);
+}
+
+.admin-layout .el-switch.is-checked .el-switch__core {
+  background-color: var(--el-color-primary);
+  border-color: var(--el-color-primary);
+}
+
+.admin-layout .el-menu-item.is-active {
+  color: var(--el-color-primary-dark-2);
+  background-color: var(--el-color-primary-light-9);
+}
+
+.admin-layout .el-menu-item:hover {
+  background-color: var(--el-color-primary-light-9);
+}
+
+.admin-layout .el-descriptions__label {
+  color: var(--el-text-color-secondary);
+  background-color: #f4f7fa;
+}
+
+.admin-layout .stat-tag--neutral.el-tag {
+  --el-tag-bg-color: var(--el-color-info-light-9);
+  --el-tag-border-color: var(--el-color-info-light-7);
+  --el-tag-text-color: var(--el-color-info);
+}
+
+.admin-layout .metric-value--muted {
+  color: var(--el-color-primary) !important;
+}
+
+.admin-layout .metric-value--warn {
+  color: var(--el-color-warning) !important;
+}
+
+.admin-layout .el-pagination.is-background .btn-next,
+.admin-layout .el-pagination.is-background .btn-prev,
+.admin-layout .el-pagination.is-background .el-pager li {
+  background-color: #ffffff;
+}
+
+.admin-layout .el-button:focus-visible {
+  outline: 2px solid var(--el-color-primary-light-5);
+  outline-offset: 1px;
+}
+
+/* 弹窗挂到 body，需单独覆盖主按钮文字色 */
+.el-overlay .el-button.el-button--primary:not(.is-plain):not(.is-link):not(.is-text) {
+  color: #ffffff !important;
+  background-color: #5b7c9d !important;
+  border-color: #5b7c9d !important;
+}
+
+.el-overlay .el-button.el-button--primary:not(.is-plain):not(.is-link):not(.is-text):hover,
+.el-overlay .el-button.el-button--primary:not(.is-plain):not(.is-link):not(.is-text):focus {
+  color: #ffffff !important;
+  background-color: #7d9ab5 !important;
+  border-color: #7d9ab5 !important;
+}

@@ -1,0 +1,52 @@
+/* 后台灰蓝主题：仅作用于 .admin-layout，聊天页不受影响 */
+.admin-layout {
+  --el-color-primary: #5b7c9d;
+  --el-color-primary-light-3: #7d9ab5;
+  --el-color-primary-light-5: #9eb3c8;
+  --el-color-primary-light-7: #c5d4e0;
+  --el-color-primary-light-8: #dbe4ed;
+  --el-color-primary-light-9: #ecf1f6;
+  --el-color-primary-dark-2: #4a6680;
+
+  --el-color-success: #5a8f7b;
+  --el-color-success-light-3: #7aa894;
+  --el-color-success-light-5: #9bc0ad;
+  --el-color-success-light-7: #c2d9cc;
+  --el-color-success-light-8: #d9e9df;
+  --el-color-success-light-9: #edf5f0;
+
+  --el-color-warning: #b8956b;
+  --el-color-warning-light-3: #c9ab87;
+  --el-color-warning-light-5: #d9c1a4;
+  --el-color-warning-light-7: #e9d9c6;
+  --el-color-warning-light-8: #f2ebe0;
+  --el-color-warning-light-9: #f8f4ee;
+
+  --el-color-danger: #9e7a7a;
+  --el-color-danger-light-3: #b49797;
+  --el-color-danger-light-5: #cbb4b4;
+  --el-color-danger-light-7: #e0d0d0;
+  --el-color-danger-light-8: #ede4e4;
+  --el-color-danger-light-9: #f6f0f0;
+
+  --el-color-info: #6b8cae;
+  --el-color-info-light-3: #8aa5be;
+  --el-color-info-light-5: #a9bdce;
+  --el-color-info-light-7: #c9d6e2;
+  --el-color-info-light-8: #dfe7ef;
+  --el-color-info-light-9: #eef3f7;
+
+  --el-color-white: #ffffff;
+  --el-color-black: #1e293b;
+  --el-bg-color: #ffffff;
+  --el-bg-color-page: #e9eef3;
+  --el-text-color-primary: #334155;
+  --el-text-color-regular: #475569;
+  --el-text-color-secondary: #64748b;
+  --el-text-color-placeholder: #94a3b8;
+  --el-border-color: #d8e0e9;
+  --el-border-color-light: #e2e8f0;
+  --el-border-color-lighter: #e8edf3;
+  --el-fill-color-blank: #ffffff;
+  --el-fill-color-light: #f4f7fa;
+}

@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { ElMessage } from 'element-plus'
+import AdminPageHeader from '../components/AdminPageHeader.vue'
 import { fetchTraceLogs, type TraceLog } from '../api/admin'
 
 const logs = ref<TraceLog[]>([])
 const detailId = ref<number | null>(null)
 const loading = ref(false)
-const error = ref('')
 const filters = reactive({
   keyword: '',
   route: 'all',
@@ -14,9 +15,13 @@ const filters = reactive({
   conversationId: '',
   limit: 50,
 })
-const page = reactive({
-  current: 1,
-  pageSize: 20,
+const page = reactive({ current: 1, pageSize: 20 })
+
+const drawerVisible = computed({
+  get: () => detailId.value !== null,
+  set: (value: boolean) => {
+    if (!value) detailId.value = null
+  },
 })
 
 const detailLog = computed(() => logs.value.find((item) => item.id === detailId.value) ?? null)
@@ -49,11 +54,11 @@ const filteredLogs = computed(() => {
   })
 })
 
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredLogs.value.length / page.pageSize)))
 const pagedLogs = computed(() => {
   const start = (page.current - 1) * page.pageSize
   return filteredLogs.value.slice(start, start + page.pageSize)
 })
+
 const successCount = computed(() => logs.value.filter((item) => !item.error_message).length)
 const errorCount = computed(() => logs.value.filter((item) => item.error_message).length)
 const handoffCount = computed(() => logs.value.filter((item) => item.handoff_required).length)
@@ -64,12 +69,11 @@ onMounted(() => {
 
 async function loadLogs() {
   loading.value = true
-  error.value = ''
   try {
     logs.value = await fetchTraceLogs(filters.limit)
     page.current = 1
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '链路日志加载失败'
+    ElMessage.error(err instanceof Error ? err.message : '链路日志加载失败')
   } finally {
     loading.value = false
   }
@@ -102,13 +106,13 @@ function formatRoute(item: TraceLog) {
   return item.route || 'unknown'
 }
 
-function routeClass(item: TraceLog) {
-  return {
-    error: Boolean(item.error_message),
-    handoff: item.route === 'handoff',
-    rag: item.route === 'rag' || item.route === 'rag_llm',
-    rule: item.route === 'db_rule',
-  }
+function routeTagType(item: TraceLog): 'success' | 'warning' | 'info' | undefined {
+  if (item.error_message) return 'info'
+  if (item.route === 'handoff') return 'warning'
+  if (item.route === 'rag' || item.route === 'rag_llm') return 'success'
+  if (item.route === 'rag_fallback') return 'warning'
+  if (item.route === 'db_rule') return 'info'
+  return 'info'
 }
 
 function formatText(value: string, max = 96) {
@@ -143,270 +147,255 @@ function formatCitationNames(item: TraceLog) {
 function formatRagQuestion(match: TraceLog['rag_matches'][number]) {
   return match.question || match.knowledge_id
 }
-
-function changePage(nextPage: number) {
-  page.current = Math.min(Math.max(1, nextPage), totalPages.value)
-}
-
-function changePageSize(event: Event) {
-  page.pageSize = Number((event.target as HTMLSelectElement).value)
-  page.current = 1
-}
 </script>
 
 <template>
-  <main class="admin-shell trace-log-page">
-    <header class="page-heading">
-      <div>
-        <strong>回答日志</strong>
-        <span>主表保留时间、会话、问题、回答、路由、RAG 与耗时；完整链路在详情弹窗查看。</span>
-      </div>
-      <nav aria-label="面包屑">首页 &gt; 客服数据 &gt; 回答日志</nav>
-    </header>
+  <div class="admin-page">
+    <AdminPageHeader
+      title="回答日志"
+      subtitle="主表保留时间、会话、问题、回答、路由、RAG 与耗时；完整链路在详情抽屉查看"
+      breadcrumb="首页 > 客服数据 > 回答日志"
+    />
 
-    <section class="trace-filter-panel">
-      <div class="trace-filters">
-        <label>
-          <span>问题关键词</span>
-          <input v-model="filters.keyword" placeholder="输入问题 / 回答 / trace 关键词" />
-        </label>
-        <label>
-          <span>会话 ID</span>
-          <input v-model="filters.conversationId" placeholder="子串匹配 conversationId" />
-        </label>
-        <label>
-          <span>路由</span>
-          <select v-model="filters.route">
-            <option value="all">全部</option>
-            <option v-for="route in routeOptions" :key="route" :value="route">{{ route }}</option>
-          </select>
-        </label>
-        <label>
-          <span>转人工</span>
-          <select v-model="filters.handoff">
-            <option value="all">全部</option>
-            <option value="yes">是</option>
-            <option value="no">否</option>
-          </select>
-        </label>
-        <label>
-          <span>风险</span>
-          <select v-model="filters.risk">
-            <option value="all">全部</option>
-            <option value="low">low</option>
-            <option value="medium">medium</option>
-            <option value="high">high</option>
-          </select>
-        </label>
-        <label>
-          <span>加载条数</span>
-          <select v-model.number="filters.limit">
-            <option :value="20">20</option>
-            <option :value="50">50</option>
-            <option :value="100">100</option>
-          </select>
-        </label>
+    <el-card shadow="never" class="toolbar-card">
+      <el-form :inline="true" class="filter-form">
+        <el-form-item label="关键词">
+          <el-input v-model="filters.keyword" placeholder="问题 / 回答 / trace" clearable />
+        </el-form-item>
+        <el-form-item label="会话 ID">
+          <el-input v-model="filters.conversationId" placeholder="conversationId" clearable />
+        </el-form-item>
+        <el-form-item label="路由">
+          <el-select v-model="filters.route" style="width: 140px">
+            <el-option label="全部" value="all" />
+            <el-option v-for="route in routeOptions" :key="route" :label="route" :value="route" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="转人工">
+          <el-select v-model="filters.handoff" style="width: 100px">
+            <el-option label="全部" value="all" />
+            <el-option label="是" value="yes" />
+            <el-option label="否" value="no" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="风险">
+          <el-select v-model="filters.risk" style="width: 110px">
+            <el-option label="全部" value="all" />
+            <el-option label="low" value="low" />
+            <el-option label="medium" value="medium" />
+            <el-option label="high" value="high" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="加载条数">
+          <el-select v-model="filters.limit" style="width: 100px">
+            <el-option :value="20" label="20" />
+            <el-option :value="50" label="50" />
+            <el-option :value="100" label="100" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <div class="toolbar-row">
+        <div class="stat-tags">
+          <el-tag type="success">成功 {{ successCount }}</el-tag>
+          <el-tag class="stat-tag--neutral" effect="plain">错误 {{ errorCount }}</el-tag>
+          <el-tag type="warning">转人工 {{ handoffCount }}</el-tag>
+        </div>
+        <div class="toolbar-actions">
+          <el-button @click="resetFilters">重置</el-button>
+          <el-button type="primary" :loading="loading" @click="loadLogs">搜索</el-button>
+        </div>
       </div>
+    </el-card>
 
-      <div class="trace-actions">
-        <button type="button" @click="resetFilters">重置</button>
-        <button type="button" class="primary" :disabled="loading" @click="loadLogs">
-          {{ loading ? '搜索中' : '搜索' }}
-        </button>
+    <el-card shadow="never" class="table-card">
+      <template #header>
+        <div class="table-card-header">
+          <strong>回答日志</strong>
+          <span>共 {{ filteredLogs.length }} 条</span>
+        </div>
+      </template>
+
+      <el-table v-loading="loading" border :data="pagedLogs" empty-text="暂无日志">
+        <el-table-column prop="created_at" label="时间" width="170" />
+        <el-table-column label="会话" min-width="180">
+          <template #default="{ row }">
+            <div>{{ formatText(row.conversation_id, 28) }}</div>
+            <div class="sub-text">{{ formatText(row.trace_id, 24) }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="问题" min-width="180" show-overflow-tooltip>
+          <template #default="{ row }">{{ formatText(row.user_message, 120) }}</template>
+        </el-table-column>
+        <el-table-column label="回答" min-width="200" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ formatText(row.response_text || row.error_message, 150) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="路由" width="110">
+          <template #default="{ row }">
+            <el-tag :type="routeTagType(row as TraceLog)">{{ formatRoute(row as TraceLog) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="命中知识" min-width="160" show-overflow-tooltip>
+          <template #default="{ row }">{{ formatCitationNames(row as TraceLog) }}</template>
+        </el-table-column>
+        <el-table-column label="耗时" width="100">
+          <template #default="{ row }">{{ formatLatency(row.total_latency_ms) }}</template>
+        </el-table-column>
+        <el-table-column label="转人工" width="80">
+          <template #default="{ row }">{{ row.handoff_required ? '是' : '否' }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="80" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="openDetail(row as TraceLog)">详情</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="pagination-wrap">
+        <el-pagination
+          v-model:current-page="page.current"
+          v-model:page-size="page.pageSize"
+          :total="filteredLogs.length"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next"
+          background
+        />
       </div>
+    </el-card>
 
-      <div class="trace-stats">
-        <span>成功 {{ successCount }}</span>
-        <span>错误 {{ errorCount }}</span>
-        <span>转人工 {{ handoffCount }}</span>
-      </div>
-    </section>
-
-    <p v-if="error" class="error">{{ error }}</p>
-
-    <section class="trace-table-panel">
-      <div class="trace-table-title">
-        <strong>回答日志</strong>
-        <span>共 {{ filteredLogs.length }} 条</span>
-      </div>
-
-      <div v-if="loading" class="admin-muted trace-loading">正在加载链路日志...</div>
-      <div v-else class="trace-table-wrap">
-        <table class="trace-table">
-          <thead>
-            <tr>
-              <th>时间</th>
-              <th>会话</th>
-              <th>问题</th>
-              <th>回答</th>
-              <th>路由</th>
-              <th>命中知识</th>
-              <th>耗时</th>
-              <th>转人工</th>
-              <th>详情</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="filteredLogs.length === 0">
-              <td colspan="9" class="trace-empty">暂无日志</td>
-            </tr>
-            <tr v-for="item in pagedLogs" :key="item.id">
-              <td>{{ item.created_at }}</td>
-              <td>
-                <div class="trace-conversation-cell">
-                  <strong>{{ formatText(item.conversation_id, 28) }}</strong>
-                  <span>{{ formatText(item.trace_id, 24) }}</span>
-                </div>
-              </td>
-              <td class="trace-question-cell">{{ formatText(item.user_message, 120) }}</td>
-              <td class="trace-answer-cell">
-                {{ formatText(item.response_text || item.error_message, 150) }}
-              </td>
-              <td>
-                <span class="route-tag" :class="routeClass(item)">{{ formatRoute(item) }}</span>
-              </td>
-              <td>
-                {{ formatCitationNames(item) }}
-              </td>
-              <td>{{ formatLatency(item.total_latency_ms) }}</td>
-              <td>{{ item.handoff_required ? '是' : '否' }}</td>
-              <td class="trace-op-cell">
-                <button type="button" @click="openDetail(item)">详情</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div v-if="!loading && filteredLogs.length > 0" class="table-pagination">
-        <span>共 {{ filteredLogs.length }} 条</span>
-        <label>
-          每页
-          <select :value="page.pageSize" @change="changePageSize">
-            <option :value="10">10</option>
-            <option :value="20">20</option>
-            <option :value="50">50</option>
-            <option :value="100">100</option>
-          </select>
-          条
-        </label>
-        <button type="button" :disabled="page.current <= 1" @click="changePage(page.current - 1)">
-          上一页
-        </button>
-        <strong>{{ page.current }} / {{ totalPages }}</strong>
-        <button type="button" :disabled="page.current >= totalPages" @click="changePage(page.current + 1)">
-          下一页
-        </button>
-      </div>
-    </section>
-
-    <div v-if="detailLog" class="admin-dialog-mask" @click.self="closeDetail">
-      <article class="admin-dialog trace-detail-dialog" role="dialog" aria-modal="true" aria-label="链路详情">
-        <header>
+    <el-drawer v-model="drawerVisible" :with-header="false" size="62%" destroy-on-close>
+      <template v-if="detailLog">
+        <div class="drawer-header">
           <div>
-            <strong>链路详情</strong>
-            <span>{{ detailLog.trace_id }}</span>
+            <h3>链路详情</h3>
+            <p>{{ detailLog.trace_id }}</p>
           </div>
-          <button type="button" @click="closeDetail">×</button>
-        </header>
+          <el-button @click="closeDetail">关闭</el-button>
+        </div>
 
-        <section class="trace-detail-body">
-          <div class="trace-detail-summary">
-            <div>
-              <span>总耗时</span>
-              <strong>{{ formatLatency(detailLog.total_latency_ms) }}</strong>
+        <el-descriptions :column="3" border class="detail-desc">
+          <el-descriptions-item label="总耗时">{{ formatLatency(detailLog.total_latency_ms) }}</el-descriptions-item>
+          <el-descriptions-item label="路由">{{ formatRoute(detailLog) }}</el-descriptions-item>
+          <el-descriptions-item label="意图">{{ detailLog.intent || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="模型">{{ detailLog.model_used || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="转人工">{{ detailLog.handoff_required ? '是' : '否' }}</el-descriptions-item>
+          <el-descriptions-item label="风险">{{ detailLog.risk_level || '-' }}</el-descriptions-item>
+        </el-descriptions>
+
+        <el-alert
+          v-if="detailLog.error_message"
+          :title="detailLog.error_message"
+          type="warning"
+          show-icon
+          :closable="false"
+          class="detail-alert"
+        />
+
+        <el-card shadow="never" class="detail-section">
+          <template #header><strong>回复内容</strong></template>
+          <p>{{ detailLog.response_text || '无回复内容' }}</p>
+        </el-card>
+
+        <el-card shadow="never" class="detail-section">
+          <template #header><strong>阶段耗时</strong></template>
+          <el-table border :data="detailStages" size="small" empty-text="无阶段数据">
+            <el-table-column label="阶段">
+              <template #default="{ row }">{{ formatStageName(row.name) }}</template>
+            </el-table-column>
+            <el-table-column prop="status" label="状态" width="100" />
+            <el-table-column label="耗时" width="100">
+              <template #default="{ row }">{{ formatLatency(row.latency_ms) }}</template>
+            </el-table-column>
+            <el-table-column prop="detail" label="详情" min-width="180" show-overflow-tooltip />
+          </el-table>
+        </el-card>
+
+        <el-card shadow="never" class="detail-section">
+          <template #header><strong>RAG 检索</strong></template>
+          <el-empty v-if="detailRagMatches.length === 0" description="没有召回候选" />
+          <div v-for="match in detailRagMatches" :key="match.chunk_id" class="match-block">
+            <strong>{{ formatRagQuestion(match) }}</strong>
+            <div class="sub-text">
+              {{ match.knowledge_id }} / {{ match.chunk_id }} / {{ match.score.toFixed(3) }}
             </div>
-            <div>
-              <span>路由</span>
-              <strong>{{ formatRoute(detailLog) }}</strong>
-            </div>
-            <div>
-              <span>意图</span>
-              <strong>{{ detailLog.intent || '-' }}</strong>
-            </div>
-            <div>
-              <span>模型</span>
-              <strong>{{ detailLog.model_used || '-' }}</strong>
-            </div>
-            <div>
-              <span>转人工</span>
-              <strong>{{ detailLog.handoff_required ? '是' : '否' }}</strong>
-            </div>
-            <div>
-              <span>风险</span>
-              <strong>{{ detailLog.risk_level || '-' }}</strong>
-            </div>
+            <p>{{ match.chunk_text || match.content }}</p>
           </div>
+        </el-card>
 
-          <section class="trace-detail-section">
-            <h2>主链路</h2>
-            <div class="trace-flow-line">
-              <div>
-                <span>用户问题</span>
-                <strong>{{ detailLog.user_message }}</strong>
-              </div>
-              <div>
-                <span>Gateway</span>
-                <strong>{{ detailLog.channel }} / {{ detailLog.message_type }}</strong>
-                <small>{{ detailLog.conversation_id }}</small>
-              </div>
-              <div v-for="stage in detailStages" :key="`${stage.name}-${stage.status}`">
-                <span>{{ formatStageName(stage.name) }}</span>
-                <strong>{{ stage.status }}</strong>
-                <small>{{ stage.detail || formatLatency(stage.latency_ms) }}</small>
-              </div>
-              <div>
-                <span>最终答案</span>
-                <strong>{{ detailLog.response_type || detailLog.route }}</strong>
-                <small>{{ formatLatency(detailLog.total_latency_ms) }}</small>
-              </div>
-            </div>
-          </section>
-
-          <section v-if="detailLog.error_message" class="notice danger">
-            {{ detailLog.error_message }}
-          </section>
-
-          <section class="trace-detail-section">
-            <h2>回复内容</h2>
-            <p>{{ detailLog.response_text || '无回复内容' }}</p>
-          </section>
-
-          <section class="trace-detail-section">
-            <h2>阶段耗时</h2>
-            <div class="trace-stage-table">
-              <div v-for="stage in detailStages" :key="`${stage.name}-${stage.latency_ms}`">
-                <span>{{ formatStageName(stage.name) }}</span>
-                <em>{{ stage.status }}</em>
-                <strong>{{ formatLatency(stage.latency_ms) }}</strong>
-                <small>{{ stage.detail }}</small>
-              </div>
-            </div>
-          </section>
-
-          <section class="trace-detail-section">
-            <h2>RAG 检索</h2>
-            <p v-if="detailRagMatches.length === 0" class="admin-muted">没有召回候选，或未进入 RAG</p>
-            <div v-for="match in detailRagMatches" :key="match.chunk_id" class="rag-match-row">
-              <strong>{{ formatRagQuestion(match) }}</strong>
-              <span>{{ match.knowledge_id }} / {{ match.chunk_id }} / {{ match.score.toFixed(3) }}</span>
-              <p>{{ match.chunk_text || match.content }}</p>
-            </div>
-          </section>
-
-          <section class="trace-detail-section">
-            <h2>引用来源</h2>
-            <p v-if="detailCitations.length === 0" class="admin-muted">本次回答没有引用来源</p>
-            <div v-for="citation in detailCitations" :key="citation.doc_id" class="citation-row">
-              <strong>{{ citation.question || citation.doc_id }}</strong>
-              <span>{{ citation.doc_id }} / {{ citation.score.toFixed(3) }}</span>
-            </div>
-          </section>
-        </section>
-
-        <footer>
-          <button type="button" @click="closeDetail">关闭</button>
-        </footer>
-      </article>
-    </div>
-  </main>
+        <el-card shadow="never" class="detail-section">
+          <template #header><strong>引用来源</strong></template>
+          <el-empty v-if="detailCitations.length === 0" description="本次回答没有引用来源" />
+          <div v-for="citation in detailCitations" :key="citation.doc_id" class="match-block">
+            <strong>{{ citation.question || citation.doc_id }}</strong>
+            <div class="sub-text">{{ citation.doc_id }} / {{ citation.score.toFixed(3) }}</div>
+          </div>
+        </el-card>
+      </template>
+    </el-drawer>
+  </div>
 </template>
+
+<style scoped>
+.filter-form {
+  margin-bottom: 8px;
+}
+
+.stat-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pagination-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.drawer-header h3 {
+  margin: 0;
+}
+
+.drawer-header p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.detail-desc {
+  margin-bottom: 16px;
+}
+
+.detail-alert {
+  margin-bottom: 16px;
+}
+
+.detail-section {
+  margin-bottom: 16px;
+}
+
+.match-block {
+  padding: 10px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.match-block:last-child {
+  border-bottom: 0;
+}
+
+.match-block p {
+  margin: 8px 0 0;
+  color: #475569;
+  line-height: 1.6;
+}
+</style>

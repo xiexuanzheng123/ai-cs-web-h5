@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import AdminPageHeader from '../components/AdminPageHeader.vue'
 import {
   createCategory,
   deleteCategory,
@@ -28,7 +30,6 @@ const editingId = ref<number | null>(null)
 const form = reactive<CategoryInput>({ ...emptyForm })
 const loading = ref(false)
 const saving = ref(false)
-const error = ref('')
 
 const categoryNameMap = computed(() => {
   const map = new Map<number, string>()
@@ -78,11 +79,10 @@ onMounted(() => {
 
 async function loadCategories() {
   loading.value = true
-  error.value = ''
   try {
     categories.value = await fetchCategories()
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '分类加载失败'
+    ElMessage.error(err instanceof Error ? err.message : '分类加载失败')
   } finally {
     loading.value = false
   }
@@ -132,11 +132,10 @@ function formatParentLabel(parentId: number) {
 
 async function saveCategory() {
   if (!form.name.trim()) {
-    error.value = '分类名称不能为空'
+    ElMessage.warning('分类名称不能为空')
     return
   }
   saving.value = true
-  error.value = ''
   try {
     if (editingId.value) {
       await updateCategory(editingId.value, {
@@ -153,130 +152,122 @@ async function saveCategory() {
     }
     closeDialog()
     await loadCategories()
+    ElMessage.success('分类已保存')
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '分类保存失败'
+    ElMessage.error(err instanceof Error ? err.message : '分类保存失败')
   } finally {
     saving.value = false
   }
 }
 
 async function removeCategory(row: CategoryRecord) {
-  if (!window.confirm(`确认删除分类「${row.name}」吗？`)) return
-  error.value = ''
   try {
+    await ElMessageBox.confirm(`确认删除分类「${row.name}」吗？`, '删除确认', { type: 'warning' })
     await deleteCategory(row.id)
     await loadCategories()
+    ElMessage.success('分类已删除')
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '分类删除失败'
+    if (err === 'cancel' || err === 'close') return
+    ElMessage.error(err instanceof Error ? err.message : '分类删除失败')
   }
 }
 </script>
 
 <template>
-  <main class="admin-shell category-admin-page">
-    <header class="page-heading">
-      <div>
-        <strong>分类管理</strong>
-        <span>维护知识分类树，当前支持最多三级</span>
-      </div>
-      <nav aria-label="面包屑">首页 &gt; 客服数据 &gt; 分类管理</nav>
-    </header>
+  <div class="admin-page">
+    <AdminPageHeader
+      title="分类管理"
+      subtitle="维护知识分类树，当前支持最多三级"
+      breadcrumb="首页 > 客服数据 > 分类管理"
+    />
 
-    <section class="category-toolbar">
-      <div>
-        <strong>分类管理</strong>
-        <span>共 {{ categories.length }} 个分类</span>
-      </div>
-      <div>
-        <button type="button" :disabled="loading" @click="loadCategories">
-          {{ loading ? '刷新中' : '刷新' }}
-        </button>
-        <button type="button" class="primary" @click="openCreateRootDialog">新增一级分类</button>
-      </div>
-    </section>
-
-    <p v-if="error" class="error">{{ error }}</p>
-
-    <section class="category-table-panel">
-      <div v-if="loading" class="admin-muted category-loading">正在加载分类...</div>
-      <div v-else class="category-table-wrap">
-        <table class="category-table">
-          <thead>
-            <tr>
-              <th>分类名称</th>
-              <th>分类路径</th>
-              <th>排序</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="flatCategories.length === 0">
-              <td colspan="4" class="category-empty">暂无分类</td>
-            </tr>
-            <tr v-for="row in flatCategories" :key="row.id">
-              <td>
-                <div class="category-name-cell" :style="{ paddingLeft: `${(row.level - 1) * 28}px` }">
-                  <button
-                    v-if="row.has_children"
-                    type="button"
-                    class="category-toggle"
-                    @click="toggleCategory(row.id)"
-                  >
-                    {{ row.collapsed ? '▶' : '▼' }}
-                  </button>
-                  <span v-else class="category-toggle-placeholder"></span>
-                  <strong>{{ row.name }}</strong>
-                  <em :class="`level-${row.level}`">L{{ row.level }}</em>
-                  <span class="category-child-count">({{ row.child_count }})</span>
-                </div>
-              </td>
-              <td>{{ row.path_label }}</td>
-              <td>{{ row.sort_order }}</td>
-              <td class="category-op-cell">
-                <button v-if="row.level < 3" type="button" @click="openCreateChildDialog(row)">
-                  新增子类
-                </button>
-                <button type="button" @click="openEditDialog(row)">编辑</button>
-                <button type="button" class="danger" @click="removeCategory(row)">删除</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <div v-if="dialogVisible" class="admin-dialog-mask" @click.self="closeDialog">
-      <section class="admin-dialog category-dialog">
-        <header>
-          <strong>{{ editingId ? '编辑分类' : '新增分类' }}</strong>
-          <button type="button" @click="closeDialog">×</button>
-        </header>
-        <div class="category-form">
-          <label>
-            <span>父级分类</span>
-            <select v-model.number="form.parent_id" :disabled="Boolean(editingId)">
-              <option :value="0">一级分类</option>
-              <option v-for="item in parentOptions" :key="item.id" :value="item.id">
-                {{ formatParentLabel(item.parent_id) }} / {{ item.name }}
-              </option>
-            </select>
-          </label>
-          <label>
-            <span>分类名称</span>
-            <input v-model="form.name" placeholder="请输入分类名称" />
-          </label>
-          <label>
-            <span>排序</span>
-            <input v-model.number="form.sort_order" type="number" min="0" />
-          </label>
+    <el-card shadow="never" class="toolbar-card">
+      <div class="toolbar-row">
+        <span class="sub-text">共 {{ categories.length }} 个分类</span>
+        <div class="toolbar-actions">
+          <el-button :loading="loading" @click="loadCategories">刷新</el-button>
+          <el-button type="primary" @click="openCreateRootDialog">新增一级分类</el-button>
         </div>
-        <footer>
-          <button type="button" @click="closeDialog">取消</button>
-          <button type="button" class="primary" :disabled="saving" @click="saveCategory">
-            {{ saving ? '保存中' : '保存' }}
-          </button>
-        </footer>
-      </section>
-    </div>
-  </main>
+      </div>
+    </el-card>
+
+    <el-card shadow="never">
+      <el-table v-loading="loading" border :data="flatCategories" empty-text="暂无分类">
+        <el-table-column label="分类名称" min-width="260">
+          <template #default="{ row }">
+            <div class="category-name-cell" :style="{ paddingLeft: `${(row.level - 1) * 20}px` }">
+              <el-button
+                v-if="row.has_children"
+                link
+                type="primary"
+                @click="toggleCategory(row.id)"
+              >
+                {{ row.collapsed ? '▶' : '▼' }}
+              </el-button>
+              <span v-else class="toggle-placeholder" />
+              <strong>{{ row.name }}</strong>
+              <el-tag size="small" type="info">L{{ row.level }}</el-tag>
+              <span class="sub-text">({{ row.child_count }})</span>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="path_label" label="分类路径" min-width="220" />
+        <el-table-column prop="sort_order" label="排序" width="80" />
+        <el-table-column label="操作" width="240" fixed="right">
+          <template #default="{ row }">
+            <el-button v-if="row.level < 3" link type="primary" @click="openCreateChildDialog(row as CategoryRecord)">
+              新增子类
+            </el-button>
+            <el-button link type="primary" @click="openEditDialog(row as CategoryRecord)">编辑</el-button>
+            <el-button link type="danger" @click="removeCategory(row as CategoryRecord)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
+    <el-dialog
+      v-model="dialogVisible"
+      :title="editingId ? '编辑分类' : '新增分类'"
+      width="520px"
+      destroy-on-close
+      @closed="closeDialog"
+    >
+      <el-form label-width="90px">
+        <el-form-item label="父级分类">
+          <el-select v-model="form.parent_id" :disabled="Boolean(editingId)" style="width: 100%">
+            <el-option :value="0" label="一级分类" />
+            <el-option
+              v-for="item in parentOptions"
+              :key="item.id"
+              :value="item.id"
+              :label="`${formatParentLabel(item.parent_id)} / ${item.name}`"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="分类名称">
+          <el-input v-model="form.name" placeholder="请输入分类名称" />
+        </el-form-item>
+        <el-form-item label="排序">
+          <el-input-number v-model="form.sort_order" :min="0" style="width: 100%" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="closeDialog">取消</el-button>
+        <el-button type="primary" :loading="saving" @click="saveCategory">保存</el-button>
+      </template>
+    </el-dialog>
+  </div>
 </template>
+
+<style scoped>
+.category-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toggle-placeholder {
+  display: inline-block;
+  width: 24px;
+}
+</style>

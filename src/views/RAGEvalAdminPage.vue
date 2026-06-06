@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { ElMessage } from 'element-plus'
+import AdminPageHeader from '../components/AdminPageHeader.vue'
 import {
   createRAGEvalCase,
   fetchRAGEvalCases,
@@ -26,6 +28,7 @@ const emptyForm: RAGEvalCaseInput = {
 const cases = ref<RAGEvalCaseRecord[]>([])
 const form = ref<RAGEvalCaseInput>({ ...emptyForm })
 const editingId = ref<number | null>(null)
+const dialogVisible = ref(false)
 const loading = ref(false)
 const saving = ref(false)
 const running = ref(false)
@@ -33,7 +36,6 @@ const seeding = ref(false)
 const fullRunning = ref(false)
 const historyLoading = ref(false)
 const filterStatus = ref('all')
-const error = ref('')
 const runResult = ref<RAGEvalRunResult | null>(null)
 const runHistory = ref<RAGEvalRunRecord[]>([])
 const activeRunID = ref('')
@@ -51,17 +53,22 @@ onMounted(() => {
 
 async function loadCases() {
   loading.value = true
-  error.value = ''
   try {
     cases.value = await fetchRAGEvalCases()
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'RAG 回归集加载失败'
+    ElMessage.error(err instanceof Error ? err.message : 'RAG 回归集加载失败')
   } finally {
     loading.value = false
   }
 }
 
-function editCase(item: RAGEvalCaseRecord) {
+function openCreateDialog() {
+  editingId.value = null
+  form.value = { ...emptyForm }
+  dialogVisible.value = true
+}
+
+function openEditDialog(item: RAGEvalCaseRecord) {
   editingId.value = item.id
   form.value = {
     case_id: item.case_id,
@@ -71,31 +78,33 @@ function editCase(item: RAGEvalCaseRecord) {
     should_answer: item.should_answer,
     status: item.status,
   }
+  dialogVisible.value = true
 }
 
-function resetForm() {
+function closeDialog() {
+  dialogVisible.value = false
   editingId.value = null
   form.value = { ...emptyForm }
 }
 
 async function submitCase() {
   if (!form.value.case_id.trim() || !form.value.query_text.trim()) {
-    error.value = '请填写 Case ID 和问题'
+    ElMessage.warning('请填写 Case ID 和问题')
     return
   }
 
   saving.value = true
-  error.value = ''
   try {
     if (editingId.value) {
       await updateRAGEvalCase(editingId.value, form.value)
     } else {
       await createRAGEvalCase(form.value)
     }
-    resetForm()
+    closeDialog()
     await loadCases()
+    ElMessage.success('Case 已保存')
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'RAG case 保存失败'
+    ElMessage.error(err instanceof Error ? err.message : 'RAG case 保存失败')
   } finally {
     saving.value = false
   }
@@ -112,20 +121,21 @@ async function toggleCase(item: RAGEvalCaseRecord) {
       status: item.status === 'active' ? 'disabled' : 'active',
     })
     await loadCases()
+    ElMessage.success('状态已更新')
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'RAG case 状态更新失败'
+    ElMessage.error(err instanceof Error ? err.message : 'RAG case 状态更新失败')
   }
 }
 
 async function runEval() {
   running.value = true
-  error.value = ''
   try {
     runResult.value = await runRAGEvalCases()
     await loadRunHistory()
     activeRunID.value = runHistory.value[0]?.run_id ?? ''
+    ElMessage.success('回归运行完成')
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'RAG 回归运行失败'
+    ElMessage.error(err instanceof Error ? err.message : 'RAG 回归运行失败')
   } finally {
     running.value = false
   }
@@ -133,14 +143,14 @@ async function runEval() {
 
 async function seedCases() {
   seeding.value = true
-  error.value = ''
   seedMessage.value = ''
   try {
     const result = await seedRAGEvalCases(200)
     seedMessage.value = formatSeedMessage(result)
     await loadCases()
+    ElMessage.success('Case 补齐完成')
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'RAG 回归集自动补齐失败'
+    ElMessage.error(err instanceof Error ? err.message : 'RAG 回归集自动补齐失败')
   } finally {
     seeding.value = false
   }
@@ -149,7 +159,6 @@ async function seedCases() {
 async function runFullRegression() {
   fullRunning.value = true
   running.value = true
-  error.value = ''
   seedMessage.value = ''
   try {
     const { seed, run } = await runFullRAGEval(200)
@@ -158,8 +167,9 @@ async function runFullRegression() {
     await loadCases()
     await loadRunHistory()
     activeRunID.value = runHistory.value[0]?.run_id ?? ''
+    ElMessage.success('一键回归完成')
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'RAG 一键回归失败'
+    ElMessage.error(err instanceof Error ? err.message : 'RAG 一键回归失败')
   } finally {
     fullRunning.value = false
     running.value = false
@@ -184,7 +194,7 @@ async function loadRunHistory() {
       activeRunID.value = runHistory.value[0].run_id
     }
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'RAG 回归历史加载失败'
+    ElMessage.error(err instanceof Error ? err.message : 'RAG 回归历史加载失败')
   } finally {
     historyLoading.value = false
   }
@@ -194,52 +204,73 @@ function formatPercent(value: number) {
   return `${Math.round((value || 0) * 100)}%`
 }
 
+function formatDuration(durationMS: number) {
+  if (durationMS >= 60000) return `${(durationMS / 60000).toFixed(1)} 分钟`
+  if (durationMS >= 1000) return `${(durationMS / 1000).toFixed(1)} 秒`
+  return `${durationMS} ms`
+}
+
 function qualityOf(result: RAGEvalRunResult | RAGEvalRunRecord | null) {
   return (
     result?.quality_summary ?? {
       top1_hit_rate: 0,
       top3_hit_rate: 0,
-      should_answer_miss_count: 0,
-      should_not_answer_hit_count: 0,
-      missing_citation_count: 0,
       suspected_hallucination: 0,
-      major_unsafe_count: 0,
-      major_unsafe_rate: 0,
-      average_case_latency_ms: 0,
     }
   )
 }
-
-const failedRunItems = computed(() => runResult.value?.items.filter((item) => !item.passed) ?? [])
 
 const activeRun = computed(() => {
   return runHistory.value.find((item) => item.run_id === activeRunID.value) ?? runHistory.value[0] ?? null
 })
 
-const activeRunFailedItems = computed(() => activeRun.value?.items.filter((item) => !item.passed) ?? [])
+const displayRun = computed(() => activeRun.value ?? runResult.value)
 
-const trendRuns = computed(() => [...runHistory.value].reverse())
+const activeRunFailedItems = computed(() => displayRun.value?.items.filter((item) => !item.passed) ?? [])
+
+const activeCaseCount = computed(() => cases.value.filter((item) => item.status === 'active').length)
+
+const overviewCards = computed(() => {
+  const run = displayRun.value
+  const quality = qualityOf(run)
+  return [
+    { label: 'Case 总数', value: String(cases.value.length), hint: `${activeCaseCount.value} 条启用中` },
+    {
+      label: '最新通过率',
+      value: run ? formatPercent(run.pass_rate) : '--',
+      hint: run ? `${run.passed}/${run.total} 通过` : '暂无运行记录',
+      type: 'success',
+    },
+    {
+      label: '最近耗时',
+      value: run ? formatDuration(run.duration_ms) : '--',
+      hint: run ? (run as RAGEvalRunRecord).created_at ?? '本次回归' : '运行后显示',
+    },
+    {
+      label: 'Top1 命中',
+      value: run ? formatPercent(quality.top1_hit_rate) : '--',
+      hint: '期望知识排第一',
+    },
+    {
+      label: 'Top3 命中',
+      value: run ? formatPercent(quality.top3_hit_rate) : '--',
+      hint: '期望知识在前三',
+    },
+    {
+      label: '疑似幻觉',
+      value: run ? String(quality.suspected_hallucination) : '--',
+      hint: '不应回答却召回',
+      type: (quality.suspected_hallucination ?? 0) > 0 ? 'warn' : '',
+    },
+  ]
+})
 
 const trendSummary = computed(() => {
   const runs = runHistory.value
-  if (runs.length === 0) {
-    return {
-      averagePassRate: 0,
-      latestPassRate: 0,
-      averageDuration: 0,
-      failedTotal: 0,
-    }
-  }
-  const averagePassRate = runs.reduce((total, item) => total + item.pass_rate, 0) / runs.length
-  const averageDuration = Math.round(
-    runs.reduce((total, item) => total + item.duration_ms, 0) / runs.length,
-  )
-  const failedTotal = runs.reduce((total, item) => total + item.failed, 0)
+  if (runs.length === 0) return { averagePassRate: 0, averageDuration: 0 }
   return {
-    averagePassRate,
-    latestPassRate: runs[0]?.pass_rate ?? 0,
-    averageDuration,
-    failedTotal,
+    averagePassRate: runs.reduce((total, item) => total + item.pass_rate, 0) / runs.length,
+    averageDuration: Math.round(runs.reduce((total, item) => total + item.duration_ms, 0) / runs.length),
   }
 })
 
@@ -248,276 +279,280 @@ const failedCaseRanks = computed(() => {
   for (const run of runHistory.value) {
     for (const item of run.items.filter((caseItem) => !caseItem.passed)) {
       const existing = rankMap.get(item.case_id)
-      if (existing) {
-        existing.failedCount += 1
-      } else {
-        rankMap.set(item.case_id, {
-          caseID: item.case_id,
-          queryText: item.query_text,
-          failedCount: 1,
-        })
-      }
+      if (existing) existing.failedCount += 1
+      else rankMap.set(item.case_id, { caseID: item.case_id, queryText: item.query_text, failedCount: 1 })
     }
   }
-  return [...rankMap.values()]
-    .sort((left, right) => right.failedCount - left.failedCount)
-    .slice(0, 5)
+  return [...rankMap.values()].sort((a, b) => b.failedCount - a.failedCount).slice(0, 5)
 })
-
-function trendBarWidth(value: number) {
-  return `${Math.max(4, Math.round((value || 0) * 100))}%`
-}
 </script>
 
 <template>
-  <main class="admin-shell">
-    <header class="admin-header">
-      <div>
-        <strong>RAG 回归集</strong>
-        <span>{{ cases.length }} 条 case / {{ filteredCases.length }} 条当前筛选</span>
-      </div>
-      <div class="eval-header-actions">
-        <button type="button" class="primary" :disabled="fullRunning" @click="runFullRegression">
-          {{ fullRunning ? '一键回归中' : '一键回归' }}
-        </button>
-        <button type="button" :disabled="seeding || fullRunning" @click="seedCases">
-          {{ seeding ? '补齐中' : '自动补齐 200 条' }}
-        </button>
-        <button type="button" :disabled="running || fullRunning" @click="runEval">
-          {{ running ? '运行中' : '运行回归' }}
-        </button>
-      </div>
-    </header>
+  <div class="admin-page">
+    <AdminPageHeader
+      title="RAG 回归集"
+      subtitle="固定测试题批量验证检索召回效果，支持历史对比与 case 管理"
+      breadcrumb="首页 > 客服数据 > RAG 回归集"
+    />
 
-    <p v-if="seedMessage" class="notice">{{ seedMessage }}</p>
+    <el-card shadow="never" class="toolbar-card">
+      <div class="toolbar-row">
+        <div>
+          <strong>回归操作</strong>
+          <div class="sub-text">先补齐 case，再运行全量检索回归</div>
+        </div>
+        <div class="toolbar-actions">
+          <el-button type="primary" :loading="fullRunning" @click="runFullRegression">一键回归</el-button>
+          <el-button :loading="running" :disabled="fullRunning" @click="runEval">运行回归</el-button>
+          <el-button :loading="seeding" :disabled="fullRunning" @click="seedCases">自动补齐 200 条</el-button>
+        </div>
+      </div>
+    </el-card>
 
-    <section v-if="runResult" class="eval-result-panel">
-      <div>
-        <span>总数</span>
-        <strong>{{ runResult.total }}</strong>
-      </div>
-      <div>
-        <span>通过</span>
-        <strong>{{ runResult.passed }}</strong>
-      </div>
-      <div>
-        <span>失败</span>
-        <strong>{{ runResult.failed }}</strong>
-      </div>
-      <div>
-        <span>通过率</span>
-        <strong>{{ formatPercent(runResult.pass_rate) }}</strong>
-      </div>
-      <div>
-        <span>耗时</span>
-        <strong>{{ runResult.duration_ms }} ms</strong>
-      </div>
-      <div>
-        <span>Top1 命中</span>
-        <strong>{{ formatPercent(qualityOf(runResult).top1_hit_rate) }}</strong>
-      </div>
-      <div>
-        <span>Top3 命中</span>
-        <strong>{{ formatPercent(qualityOf(runResult).top3_hit_rate) }}</strong>
-      </div>
-      <div>
-        <span>疑似幻觉</span>
-        <strong>{{ qualityOf(runResult).suspected_hallucination }}</strong>
-      </div>
-      <div>
-        <span>Major/Unsafe</span>
-        <strong>{{ formatPercent(qualityOf(runResult).major_unsafe_rate) }}</strong>
-      </div>
-    </section>
+    <el-alert v-if="seedMessage" :title="seedMessage" type="info" show-icon :closable="false" />
 
-    <section v-if="failedRunItems.length" class="eval-failed-panel">
-      <strong>失败 Case</strong>
-      <article v-for="item in failedRunItems" :key="item.case_id">
-        <div>
-          <b>{{ item.query_text }}</b>
-          <span>{{ item.case_id }}</span>
-        </div>
-        <p>
-          {{ item.reason }}；期望 {{ item.expected_knowledge_id || '-' }}，Top1
-          {{ item.top1_knowledge_id || '-' }} / {{ item.top1_score.toFixed(3) }}
-        </p>
-      </article>
-    </section>
+    <el-row :gutter="12">
+      <el-col v-for="card in overviewCards" :key="card.label" :xs="12" :sm="8" :md="4">
+        <el-card shadow="never" class="metric-card">
+          <div class="metric-label">{{ card.label }}</div>
+          <div class="metric-value" :class="card.type">{{ card.value }}</div>
+          <div class="sub-text">{{ card.hint }}</div>
+        </el-card>
+      </el-col>
+    </el-row>
 
-    <section v-if="runHistory.length" class="eval-trend-panel">
-      <div class="eval-history-title">
-        <div>
-          <strong>回归趋势</strong>
-          <span>最近 {{ runHistory.length }} 次运行的通过率、耗时和失败分布</span>
-        </div>
-      </div>
-      <div class="eval-trend-metrics">
-        <div>
-          <span>最新通过率</span>
-          <strong>{{ formatPercent(trendSummary.latestPassRate) }}</strong>
-        </div>
-        <div>
-          <span>平均通过率</span>
-          <strong>{{ formatPercent(trendSummary.averagePassRate) }}</strong>
-        </div>
-        <div>
-          <span>平均耗时</span>
-          <strong>{{ trendSummary.averageDuration }} ms</strong>
-        </div>
-        <div>
-          <span>累计失败</span>
-          <strong>{{ trendSummary.failedTotal }}</strong>
-        </div>
-      </div>
-      <div class="eval-trend-layout">
-        <div class="eval-trend-chart">
-          <article v-for="item in trendRuns" :key="`trend-${item.run_id}`">
-            <span>{{ item.created_at }}</span>
-            <div>
-              <i :style="{ width: trendBarWidth(item.pass_rate) }"></i>
+    <el-row :gutter="16">
+      <el-col :xs="24" :lg="16">
+        <el-card shadow="never" class="report-card">
+          <template #header>
+            <div class="table-card-header">
+              <strong>运行报告</strong>
+              <el-button size="small" :loading="historyLoading" @click="loadRunHistory">刷新历史</el-button>
             </div>
-            <b>{{ formatPercent(item.pass_rate) }}</b>
-            <em>{{ item.failed }} 失败</em>
-          </article>
-        </div>
-        <div class="eval-failure-rank">
-          <strong>失败排行</strong>
-          <p v-if="failedCaseRanks.length === 0" class="admin-muted">最近运行没有失败 case</p>
-          <article v-for="item in failedCaseRanks" :key="item.caseID">
-            <div>
-              <b>{{ item.queryText }}</b>
-              <span>{{ item.caseID }}</span>
-            </div>
-            <em>{{ item.failedCount }} 次</em>
-          </article>
-        </div>
-      </div>
-    </section>
+          </template>
 
-    <section class="eval-history-panel">
-      <div class="eval-history-title">
-        <div>
-          <strong>最近运行历史</strong>
-          <span>保存每次回归批次，便于对比知识库和检索参数调整效果</span>
-        </div>
-        <button type="button" :disabled="historyLoading" @click="loadRunHistory">
-          {{ historyLoading ? '刷新中' : '刷新历史' }}
-        </button>
-      </div>
-      <p v-if="!historyLoading && runHistory.length === 0" class="admin-muted">暂无运行历史</p>
-      <div v-else class="eval-history-layout">
-        <div class="eval-run-list">
-          <button
-            v-for="item in runHistory"
-            :key="item.run_id"
-            type="button"
-            :class="{ active: item.run_id === activeRun?.run_id }"
-            @click="activeRunID = item.run_id"
-          >
-            <b>{{ formatPercent(item.pass_rate) }}</b>
-            <span>{{ item.created_at }}</span>
-            <small>{{ item.passed }}/{{ item.total }} 通过 · {{ item.duration_ms }} ms</small>
-          </button>
-        </div>
-        <div v-if="activeRun" class="eval-run-detail">
-          <div class="eval-run-summary">
-            <span>批次 {{ activeRun.run_id }}</span>
-            <b>{{ activeRun.passed }}/{{ activeRun.total }} 通过</b>
-            <em>{{ activeRun.duration_ms }} ms</em>
-          </div>
-          <div v-if="activeRunFailedItems.length" class="eval-run-failures">
-            <article v-for="item in activeRunFailedItems" :key="`${activeRun.run_id}-${item.case_id}`">
-              <div>
-                <b>{{ item.query_text }}</b>
-                <span>{{ item.case_id }}</span>
+          <el-empty v-if="!historyLoading && runHistory.length === 0" description="暂无运行历史，点击一键回归开始" />
+
+          <el-row v-else :gutter="16">
+            <el-col :span="8">
+              <div class="run-list">
+                <el-button
+                  v-for="item in runHistory"
+                  :key="item.run_id"
+                  class="run-item"
+                  :class="{ 'run-item--active': item.run_id === displayRun?.run_id }"
+                  @click="activeRunID = item.run_id"
+                >
+                  <div>{{ formatPercent(item.pass_rate) }}</div>
+                  <div class="sub-text">{{ item.created_at }}</div>
+                  <div class="sub-text">{{ item.passed }}/{{ item.total }} · {{ formatDuration(item.duration_ms) }}</div>
+                </el-button>
               </div>
-              <p>
-                {{ item.reason }}；期望 {{ item.expected_knowledge_id || '-' }}，Top1
-                {{ item.top1_knowledge_id || '-' }} / {{ item.top1_score.toFixed(3) }}
-              </p>
-            </article>
+            </el-col>
+            <el-col :span="16">
+              <template v-if="displayRun">
+                <el-descriptions :column="3" border size="small" class="run-desc">
+                  <el-descriptions-item label="批次">{{ displayRun.run_id }}</el-descriptions-item>
+                  <el-descriptions-item label="通过">{{ displayRun.passed }}/{{ displayRun.total }}</el-descriptions-item>
+                  <el-descriptions-item label="耗时">{{ formatDuration(displayRun.duration_ms) }}</el-descriptions-item>
+                </el-descriptions>
+
+                <el-table
+                  v-if="activeRunFailedItems.length"
+                  border
+                  :data="activeRunFailedItems"
+                  size="small"
+                  class="fail-table"
+                  empty-text="全部通过"
+                >
+                  <el-table-column prop="query_text" label="问题" min-width="160" show-overflow-tooltip />
+                  <el-table-column prop="case_id" label="Case ID" width="140" />
+                  <el-table-column label="详情" min-width="220">
+                    <template #default="{ row }">
+                      {{ row.reason }}；Top1 {{ row.top1_knowledge_id || '-' }} / {{ row.top1_score.toFixed(3) }}
+                    </template>
+                  </el-table-column>
+                </el-table>
+                <el-empty v-else description="本次回归全部通过" />
+              </template>
+            </el-col>
+          </el-row>
+        </el-card>
+      </el-col>
+
+      <el-col :xs="24" :lg="8">
+        <el-card shadow="never" class="side-card">
+          <template #header><strong>通过率趋势</strong></template>
+          <el-descriptions :column="1" size="small">
+            <el-descriptions-item label="平均通过率">{{ formatPercent(trendSummary.averagePassRate) }}</el-descriptions-item>
+            <el-descriptions-item label="平均耗时">{{ formatDuration(trendSummary.averageDuration) }}</el-descriptions-item>
+          </el-descriptions>
+          <el-table v-if="runHistory.length" border :data="[...runHistory].reverse()" size="small">
+            <el-table-column prop="created_at" label="时间" width="150" />
+            <el-table-column label="通过率" width="80">
+              <template #default="{ row }">{{ formatPercent(row.pass_rate) }}</template>
+            </el-table-column>
+            <el-table-column prop="failed" label="失败" width="60" />
+          </el-table>
+        </el-card>
+
+        <el-card shadow="never" class="side-card">
+          <template #header><strong>失败排行</strong></template>
+          <el-empty v-if="failedCaseRanks.length === 0" description="暂无失败 case" />
+          <el-table v-else border :data="failedCaseRanks" size="small">
+            <el-table-column prop="queryText" label="问题" min-width="140" show-overflow-tooltip />
+            <el-table-column prop="failedCount" label="次数" width="60" />
+          </el-table>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-card shadow="never" class="table-card">
+      <template #header>
+        <div class="table-card-header">
+          <div>
+            <strong>Case 管理</strong>
+            <span>{{ filteredCases.length }} 条筛选 / 共 {{ cases.length }} 条</span>
           </div>
-          <p v-else class="admin-muted">本次回归没有失败 case</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="rule-editor">
-      <div class="field">
-        <label>Case ID</label>
-        <input v-model="form.case_id" placeholder="rag_case_member_cancel_auto_renew" />
-      </div>
-      <div class="field">
-        <label>期望知识 ID</label>
-        <input v-model="form.expected_knowledge_id" placeholder="kb_member_auto_renew_cancel" />
-      </div>
-      <div class="field">
-        <label>期望意图</label>
-        <input v-model="form.expected_intent" placeholder="member_auto_renew" />
-      </div>
-      <div class="field">
-        <label>状态</label>
-        <select v-model="form.status">
-          <option value="active">active</option>
-          <option value="disabled">disabled</option>
-        </select>
-      </div>
-      <label class="check-field">
-        <input v-model="form.should_answer" type="checkbox" />
-        应该回答
-      </label>
-      <div class="field field-wide">
-        <label>问题</label>
-        <textarea v-model="form.query_text" rows="3" placeholder="会员怎么取消自动续费"></textarea>
-      </div>
-      <div class="form-actions">
-        <button :disabled="saving" @click="submitCase">
-          {{ editingId ? '保存 Case' : '新增 Case' }}
-        </button>
-        <button type="button" @click="resetForm">清空</button>
-      </div>
-    </section>
-
-    <p v-if="error" class="error">{{ error }}</p>
-
-    <section class="rule-toolbar">
-      <div class="field">
-        <label>筛选状态</label>
-        <select v-model="filterStatus">
-          <option value="all">全部</option>
-          <option value="active">active</option>
-          <option value="disabled">disabled</option>
-        </select>
-      </div>
-      <button :disabled="loading" @click="loadCases">
-        {{ loading ? '刷新中' : '刷新列表' }}
-      </button>
-    </section>
-
-    <p v-if="loading" class="admin-muted">正在加载 RAG 回归集...</p>
-    <p v-else-if="filteredCases.length === 0" class="empty-state">暂无 case</p>
-
-    <section class="rule-list">
-      <article v-for="item in filteredCases" :key="item.id" class="rule-row">
-        <div>
-          <div class="rule-title">
-            <span>{{ item.query_text }}</span>
-            <em :class="{ off: item.status !== 'active' }">{{ item.status }}</em>
-            <small>{{ item.case_id }}</small>
+          <div class="toolbar-actions">
+            <el-select v-model="filterStatus" style="width: 120px">
+              <el-option label="全部" value="all" />
+              <el-option label="active" value="active" />
+              <el-option label="disabled" value="disabled" />
+            </el-select>
+            <el-button type="primary" @click="openCreateDialog">新增 Case</el-button>
+            <el-button :loading="loading" @click="loadCases">刷新列表</el-button>
           </div>
-          <p>
-            {{ item.expected_knowledge_id || '无期望知识' }} /
-            {{ item.expected_intent || '无期望意图' }} /
-            {{ item.should_answer ? '应该回答' : '不应回答' }}
-          </p>
         </div>
-        <div class="rule-actions">
-          <button @click="editCase(item)">编辑</button>
-          <button :class="{ danger: item.status === 'active' }" @click="toggleCase(item)">
-            {{ item.status === 'active' ? '停用' : '启用' }}
-          </button>
-        </div>
-      </article>
-    </section>
-  </main>
+      </template>
+
+      <el-table v-loading="loading" border :data="filteredCases" empty-text="暂无 case">
+        <el-table-column prop="query_text" label="问题" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="case_id" label="Case ID" width="180" />
+        <el-table-column label="类型" width="90">
+          <template #default="{ row }">
+            <el-tag :type="row.should_answer ? 'success' : 'warning'" size="small">
+              {{ row.should_answer ? '正例' : '负例' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="期望知识" min-width="140">
+          <template #default="{ row }">{{ row.expected_knowledge_id || '-' }}</template>
+        </el-table-column>
+        <el-table-column label="状态" width="100">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 'active' ? 'success' : 'info'" size="small">{{ row.status }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="160" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="openEditDialog(row as RAGEvalCaseRecord)">编辑</el-button>
+            <el-button link :type="row.status === 'active' ? 'danger' : 'success'" @click="toggleCase(row as RAGEvalCaseRecord)">
+              {{ row.status === 'active' ? '停用' : '启用' }}
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
+    <el-dialog
+      v-model="dialogVisible"
+      :title="editingId ? '编辑 Case' : '新增 Case'"
+      width="640px"
+      destroy-on-close
+      @closed="closeDialog"
+    >
+      <el-form label-width="110px">
+        <el-form-item label="Case ID">
+          <el-input v-model="form.case_id" placeholder="rag_case_member_cancel_auto_renew" />
+        </el-form-item>
+        <el-form-item label="期望知识 ID">
+          <el-input v-model="form.expected_knowledge_id" placeholder="kb_member_auto_renew_cancel" />
+        </el-form-item>
+        <el-form-item label="期望意图">
+          <el-input v-model="form.expected_intent" placeholder="member_auto_renew" />
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="form.status" style="width: 100%">
+            <el-option label="active" value="active" />
+            <el-option label="disabled" value="disabled" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="应该回答">
+          <el-switch v-model="form.should_answer" />
+        </el-form-item>
+        <el-form-item label="问题">
+          <el-input v-model="form.query_text" type="textarea" :rows="4" placeholder="会员怎么取消自动续费" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="closeDialog">取消</el-button>
+        <el-button type="primary" :loading="saving" @click="submitCase">{{ editingId ? '保存' : '新增' }}</el-button>
+      </template>
+    </el-dialog>
+  </div>
 </template>
+
+<style scoped>
+.metric-card {
+  margin-bottom: 12px;
+}
+
+.metric-label {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.metric-value {
+  margin-top: 6px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.metric-value.success {
+  color: #16a34a;
+}
+
+.metric-value.warn {
+  color: #b8956b;
+}
+
+.report-card,
+.side-card {
+  margin-bottom: 16px;
+}
+
+.run-list {
+  display: grid;
+  gap: 8px;
+}
+
+.run-item {
+  width: 100%;
+  height: auto;
+  text-align: left;
+  padding: 10px 12px;
+  border: 1px solid var(--el-border-color);
+  background: #ffffff;
+  color: #334155;
+}
+
+.run-item--active {
+  border-color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary-dark-2);
+}
+
+.run-item--active .sub-text {
+  color: #64748b;
+}
+
+.run-desc {
+  margin-bottom: 12px;
+}
+
+.fail-table {
+  margin-top: 8px;
+}
+</style>

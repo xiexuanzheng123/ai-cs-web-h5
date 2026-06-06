@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { ElMessage } from 'element-plus'
+import AdminPageHeader from '../components/AdminPageHeader.vue'
 import {
   createRule,
   fetchRules,
@@ -21,12 +23,11 @@ const emptyForm: RuleConfigInput = {
 const rules = ref<RuleConfig[]>([])
 const form = ref<RuleConfigInput>({ ...emptyForm })
 const editingId = ref<number | null>(null)
+const dialogVisible = ref(false)
 const loading = ref(false)
 const saving = ref(false)
 const togglingId = ref<number | null>(null)
 const filterType = ref('all')
-const error = ref('')
-const notice = ref('')
 
 const enabledCount = computed(() => rules.value.filter((rule) => rule.enabled).length)
 const filteredRules = computed(() => {
@@ -38,22 +39,24 @@ onMounted(() => {
   void loadRules()
 })
 
-async function loadRules(options: { keepNotice?: boolean } = {}) {
+async function loadRules() {
   loading.value = true
-  error.value = ''
-  if (!options.keepNotice) {
-    notice.value = ''
-  }
   try {
     rules.value = await fetchRules()
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '规则加载失败'
+    ElMessage.error(err instanceof Error ? err.message : '规则加载失败')
   } finally {
     loading.value = false
   }
 }
 
-function editRule(rule: RuleConfig) {
+function openCreateDialog() {
+  editingId.value = null
+  form.value = { ...emptyForm }
+  dialogVisible.value = true
+}
+
+function openEditDialog(rule: RuleConfig) {
   editingId.value = rule.id
   form.value = {
     rule_type: rule.rule_type,
@@ -63,22 +66,22 @@ function editRule(rule: RuleConfig) {
     enabled: rule.enabled,
     description: rule.description,
   }
+  dialogVisible.value = true
 }
 
-function resetForm() {
+function closeDialog() {
+  dialogVisible.value = false
   editingId.value = null
   form.value = { ...emptyForm }
 }
 
 async function submitRule() {
   if (!form.value.pattern.trim()) {
-    error.value = '请填写匹配内容'
+    ElMessage.warning('请填写匹配内容')
     return
   }
 
   saving.value = true
-  error.value = ''
-  notice.value = ''
   try {
     if (editingId.value) {
       await updateRule(editingId.value, form.value)
@@ -88,12 +91,15 @@ async function submitRule() {
     try {
       await reloadRules()
     } catch (err) {
-      notice.value = err instanceof Error ? `规则已保存，但刷新缓存失败：${err.message}` : '规则已保存，但刷新缓存失败'
+      ElMessage.warning(
+        err instanceof Error ? `规则已保存，但刷新缓存失败：${err.message}` : '规则已保存，但刷新缓存失败',
+      )
     }
-    resetForm()
-    await loadRules({ keepNotice: true })
+    closeDialog()
+    await loadRules()
+    ElMessage.success('规则已保存')
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '规则保存失败'
+    ElMessage.error(err instanceof Error ? err.message : '规则保存失败')
   } finally {
     saving.value = false
   }
@@ -101,8 +107,6 @@ async function submitRule() {
 
 async function toggleRule(rule: RuleConfig) {
   togglingId.value = rule.id
-  error.value = ''
-  notice.value = ''
   try {
     await updateRule(rule.id, {
       rule_type: rule.rule_type,
@@ -115,111 +119,168 @@ async function toggleRule(rule: RuleConfig) {
     try {
       await reloadRules()
     } catch (err) {
-      notice.value = err instanceof Error ? `规则已更新，但刷新缓存失败：${err.message}` : '规则已更新，但刷新缓存失败'
+      ElMessage.warning(
+        err instanceof Error ? `规则已更新，但刷新缓存失败：${err.message}` : '规则已更新，但刷新缓存失败',
+      )
     }
-    await loadRules({ keepNotice: true })
+    await loadRules()
+    ElMessage.success('规则状态已更新')
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '规则状态更新失败'
+    ElMessage.error(err instanceof Error ? err.message : '规则状态更新失败')
   } finally {
     togglingId.value = null
   }
 }
+
+function ruleTypeLabel(type: string) {
+  const map: Record<string, string> = {
+    greeting: '问候',
+    handoff: '转人工',
+    risk: '高风险',
+    faq: '固定 FAQ',
+  }
+  return map[type] || type
+}
+
+function actionLabel(action: string) {
+  const map: Record<string, string> = {
+    answer: '直接回复',
+    handoff: '转人工',
+    guide: '引导',
+  }
+  return map[action] || action
+}
 </script>
 
 <template>
-  <main class="admin-shell">
-    <header class="admin-header">
-      <div>
-        <strong>规则配置</strong>
-        <span>{{ enabledCount }} 条启用 / {{ rules.length }} 条规则</span>
-      </div>
-    </header>
+  <div class="admin-page">
+    <AdminPageHeader
+      title="规则配置"
+      :subtitle="`${enabledCount} 条启用 / ${rules.length} 条规则`"
+      breadcrumb="首页 > 客服数据 > 规则配置"
+    />
 
-    <section class="rule-editor">
-      <div class="field">
-        <label>规则类型</label>
-        <select v-model="form.rule_type">
-          <option value="greeting">问候</option>
-          <option value="handoff">转人工</option>
-          <option value="risk">高风险</option>
-          <option value="faq">固定 FAQ</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>匹配内容</label>
-        <input v-model="form.pattern" placeholder="例如：退款、密码错误过多" />
-      </div>
-      <div class="field">
-        <label>动作</label>
-        <select v-model="form.action">
-          <option value="answer">直接回复</option>
-          <option value="handoff">转人工</option>
-          <option value="guide">引导</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>优先级</label>
-        <input v-model.number="form.priority" type="number" />
-      </div>
-      <div class="field field-wide">
-        <label>说明 / 回复文案</label>
-        <textarea v-model="form.description" rows="3" placeholder="运营备注或固定回复内容"></textarea>
-      </div>
-      <label class="check-field">
-        <input v-model="form.enabled" type="checkbox" />
-        启用
-      </label>
-      <div class="form-actions">
-        <button :disabled="saving" @click="submitRule">
-          {{ editingId ? '保存规则' : '新增规则' }}
-        </button>
-        <button type="button" @click="resetForm">清空</button>
-      </div>
-    </section>
-
-    <p v-if="error" class="error">{{ error }}</p>
-    <p v-if="notice" class="notice">{{ notice }}</p>
-
-    <section class="rule-toolbar">
-      <div class="field">
-        <label>筛选类型</label>
-        <select v-model="filterType">
-          <option value="all">全部规则</option>
-          <option value="greeting">问候</option>
-          <option value="handoff">转人工</option>
-          <option value="risk">高风险</option>
-          <option value="faq">固定 FAQ</option>
-        </select>
-      </div>
-      <button :disabled="loading" @click="loadRules()">
-        {{ loading ? '刷新中' : '刷新列表' }}
-      </button>
-    </section>
-
-    <p v-if="loading" class="admin-muted">正在加载规则...</p>
-    <p v-else-if="filteredRules.length === 0" class="empty-state">暂无规则</p>
-
-    <section class="rule-list">
-      <article v-for="rule in filteredRules" :key="rule.id" class="rule-row">
-        <div>
-          <div class="rule-title">
-            <span>{{ rule.pattern }}</span>
-            <em :class="{ off: !rule.enabled }">{{ rule.enabled ? '启用' : '停用' }}</em>
-            <small>{{ rule.rule_type }} / {{ rule.action }} / P{{ rule.priority }}</small>
-          </div>
-          <p>{{ rule.description || '无说明' }}</p>
+    <el-card shadow="never" class="toolbar-card">
+      <div class="toolbar-row">
+        <el-select v-model="filterType" style="width: 160px">
+          <el-option label="全部规则" value="all" />
+          <el-option label="问候" value="greeting" />
+          <el-option label="转人工" value="handoff" />
+          <el-option label="高风险" value="risk" />
+          <el-option label="固定 FAQ" value="faq" />
+        </el-select>
+        <div class="toolbar-actions">
+          <el-button :loading="loading" @click="loadRules">刷新列表</el-button>
+          <el-button type="primary" @click="openCreateDialog">新增规则</el-button>
         </div>
-        <div class="rule-actions">
-          <button @click="editRule(rule)">编辑</button>
-          <button
-            :class="{ danger: rule.enabled }"
-            :disabled="togglingId === rule.id"
-            @click="toggleRule(rule)"
-          >
-            {{ togglingId === rule.id ? '处理中' : rule.enabled ? '停用' : '启用' }}
-          </button>
-        </div>
-      </article>
-    </section>
-  </main>
+      </div>
+    </el-card>
+
+    <el-card shadow="never">
+      <el-table v-loading="loading" border :data="filteredRules" empty-text="暂无规则">
+        <el-table-column label="匹配内容" min-width="220">
+          <template #default="{ row }">
+            <strong>{{ row.pattern }}</strong>
+            <div class="sub-text">{{ row.description || '无说明' }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="类型" width="110">
+          <template #default="{ row }">{{ ruleTypeLabel(row.rule_type) }}</template>
+        </el-table-column>
+        <el-table-column label="动作" width="110">
+          <template #default="{ row }">{{ actionLabel(row.action) }}</template>
+        </el-table-column>
+        <el-table-column prop="priority" label="优先级" width="90" />
+        <el-table-column label="状态" width="100">
+          <template #default="{ row }">
+            <el-tag :type="row.enabled ? 'success' : 'info'">{{ row.enabled ? '启用' : '停用' }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="180" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="openEditDialog(row as RuleConfig)">编辑</el-button>
+            <el-button
+              link
+              :type="row.enabled ? 'danger' : 'success'"
+              :loading="togglingId === row.id"
+              @click="toggleRule(row as RuleConfig)"
+            >
+              {{ row.enabled ? '停用' : '启用' }}
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
+    <el-dialog
+      v-model="dialogVisible"
+      :title="editingId ? '编辑规则' : '新增规则'"
+      width="640px"
+      destroy-on-close
+      @closed="closeDialog"
+    >
+      <el-form label-width="110px">
+        <el-form-item label="规则类型">
+          <el-select v-model="form.rule_type" style="width: 100%">
+            <el-option label="问候" value="greeting" />
+            <el-option label="转人工" value="handoff" />
+            <el-option label="高风险" value="risk" />
+            <el-option label="固定 FAQ" value="faq" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="匹配内容">
+          <el-input v-model="form.pattern" placeholder="例如：退款、密码错误过多" />
+        </el-form-item>
+        <el-form-item label="动作">
+          <el-select v-model="form.action" style="width: 100%">
+            <el-option label="直接回复" value="answer" />
+            <el-option label="转人工" value="handoff" />
+            <el-option label="引导" value="guide" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="优先级">
+          <el-input-number v-model="form.priority" :min="0" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="说明 / 回复">
+          <el-input v-model="form.description" type="textarea" :rows="3" placeholder="运营备注或固定回复内容" />
+        </el-form-item>
+        <el-form-item label="启用">
+          <el-switch v-model="form.enabled" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="closeDialog">取消</el-button>
+        <el-button type="primary" :loading="saving" @click="submitRule">保存</el-button>
+      </template>
+    </el-dialog>
+  </div>
 </template>
+
+<style scoped>
+.admin-page {
+  display: grid;
+  gap: 16px;
+}
+
+.toolbar-card :deep(.el-card__body) {
+  padding: 14px 16px;
+}
+
+.toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.sub-text {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
+}
+</style>

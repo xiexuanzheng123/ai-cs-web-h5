@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import AdminPageHeader from '../components/AdminPageHeader.vue'
 import {
   createKnowledge,
   fetchKnowledge,
@@ -28,18 +30,14 @@ const emptyFilters = {
 }
 
 const records = ref<KnowledgeRecord[]>([])
-const selectedIds = ref<number[]>([])
+const selectedRows = ref<KnowledgeRecord[]>([])
 const form = ref<KnowledgeInput>({ ...emptyForm })
 const editingId = ref<number | null>(null)
 const loading = ref(false)
 const saving = ref(false)
 const dialogVisible = ref(false)
-const error = ref('')
 const filters = reactive({ ...emptyFilters })
-const page = reactive({
-  current: 1,
-  pageSize: 20,
-})
+const page = reactive({ current: 1, pageSize: 20 })
 
 const categoryOptions = computed(() => {
   const values = records.value.map((item) => item.category).filter(Boolean)
@@ -68,12 +66,10 @@ const filteredRecords = computed(() => {
   })
 })
 
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredRecords.value.length / page.pageSize)))
 const pagedRecords = computed(() => {
   const start = (page.current - 1) * page.pageSize
   return filteredRecords.value.slice(start, start + page.pageSize)
 })
-const selectionSummary = computed(() => `批量删除(${selectedIds.value.length})`)
 
 onMounted(() => {
   void loadKnowledge()
@@ -81,13 +77,12 @@ onMounted(() => {
 
 async function loadKnowledge() {
   loading.value = true
-  error.value = ''
   try {
     records.value = await fetchKnowledge()
-    selectedIds.value = []
+    selectedRows.value = []
     page.current = 1
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '知识库加载失败'
+    ElMessage.error(err instanceof Error ? err.message : '知识库加载失败')
   } finally {
     loading.value = false
   }
@@ -126,12 +121,11 @@ function closeDialog() {
 
 async function submitKnowledge() {
   if (!form.value.knowledge_id.trim() || !form.value.question.trim() || !form.value.content.trim()) {
-    error.value = '请填写知识 ID、问题和内容'
+    ElMessage.warning('请填写知识 ID、问题和内容')
     return
   }
 
   saving.value = true
-  error.value = ''
   try {
     if (editingId.value) {
       await updateKnowledge(editingId.value, form.value)
@@ -140,16 +134,22 @@ async function submitKnowledge() {
     }
     closeDialog()
     await loadKnowledge()
+    ElMessage.success('知识已保存')
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '知识保存失败'
+    ElMessage.error(err instanceof Error ? err.message : '知识保存失败')
   } finally {
     saving.value = false
   }
 }
 
 async function updateStatus(record: KnowledgeRecord, status: string) {
-  error.value = ''
+  const action = status === 'disabled' ? '删除' : '审核'
   try {
+    if (status === 'disabled') {
+      await ElMessageBox.confirm(`确认${action}知识「${record.question}」吗？`, '操作确认', {
+        type: 'warning',
+      })
+    }
     await updateKnowledge(record.id, {
       knowledge_id: record.knowledge_id,
       question: record.question,
@@ -160,31 +160,11 @@ async function updateStatus(record: KnowledgeRecord, status: string) {
       status,
     })
     await loadKnowledge()
+    ElMessage.success('操作成功')
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '状态更新失败'
+    if (err === 'cancel' || err === 'close') return
+    ElMessage.error(err instanceof Error ? err.message : '状态更新失败')
   }
-}
-
-function toggleSelection(record: KnowledgeRecord) {
-  if (selectedIds.value.includes(record.id)) {
-    selectedIds.value = selectedIds.value.filter((id) => id !== record.id)
-    return
-  }
-  selectedIds.value = [...selectedIds.value, record.id]
-}
-
-function toggleAllSelection(event: Event) {
-  const checked = (event.target as HTMLInputElement).checked
-  selectedIds.value = checked ? pagedRecords.value.map((item) => item.id) : []
-}
-
-function changePage(nextPage: number) {
-  page.current = Math.min(Math.max(1, nextPage), totalPages.value)
-}
-
-function changePageSize(event: Event) {
-  page.pageSize = Number((event.target as HTMLSelectElement).value)
-  page.current = 1
 }
 
 function formatStatus(status: string) {
@@ -194,12 +174,10 @@ function formatStatus(status: string) {
   return status || '--'
 }
 
-function statusClass(status: string) {
-  return {
-    published: status === 'published',
-    draft: status === 'draft',
-    disabled: status === 'disabled',
-  }
+function statusTagType(status: string): 'success' | 'warning' | 'info' {
+  if (status === 'published') return 'success'
+  if (status === 'draft') return 'warning'
+  return 'info'
 }
 
 function contentSummary(content: string) {
@@ -209,219 +187,177 @@ function contentSummary(content: string) {
 </script>
 
 <template>
-  <main class="admin-shell knowledge-manage-page">
-    <header class="page-heading">
-      <div>
-        <strong>知识管理</strong>
-      </div>
-      <nav aria-label="面包屑">首页 &gt; 客服数据 &gt; 知识管理</nav>
-    </header>
+  <div class="admin-page">
+    <AdminPageHeader title="知识管理" breadcrumb="首页 > 客服数据 > 知识管理" />
 
-    <section class="knowledge-filter-panel">
-      <div class="knowledge-filters">
-        <label>
-          <span>关键词</span>
-          <input v-model="filters.keyword" placeholder="请输入问题/答案/关键词" />
-        </label>
-        <label>
-          <span>审核状态</span>
-          <select v-model="filters.status">
-            <option value="all">全部</option>
-            <option value="draft">待审核</option>
-            <option value="published">通过</option>
-            <option value="disabled">已停用</option>
-          </select>
-        </label>
-        <label>
-          <span>图片</span>
-          <select v-model="filters.hasContent">
-            <option value="all">全部</option>
-            <option value="yes">有答案内容</option>
-            <option value="no">无答案内容</option>
-          </select>
-        </label>
-        <label>
-          <span>分类</span>
-          <select v-model="filters.category">
-            <option value="all">全部分类</option>
-            <option v-for="category in categoryOptions" :key="category" :value="category">
-              {{ category }}
-            </option>
-          </select>
-        </label>
-        <label>
-          <span>申请人</span>
-          <input v-model="filters.owner" placeholder="请输入申请人" />
-        </label>
-        <label>
-          <span>创建人</span>
-          <input v-model="filters.owner" placeholder="请输入创建人" />
-        </label>
-        <label>
-          <span>审核人</span>
-          <input disabled placeholder="暂未接入" />
-        </label>
-        <label>
-          <span>版本</span>
-          <input v-model="filters.version" placeholder="请输入版本" />
-        </label>
-      </div>
-
-      <div class="knowledge-actions">
-        <button type="button" @click="resetFilters">重置</button>
-        <button type="button" class="primary" @click="loadKnowledge">搜索</button>
-        <button type="button" :disabled="selectedIds.length === 0">{{ selectionSummary }}</button>
-        <button type="button">导入 Excel</button>
-        <button type="button" class="primary" @click="openCreateDialog">新建</button>
-      </div>
-
-      <div class="knowledge-stat">
-        <span>待审核</span>
-        <strong>{{ pendingCount }}</strong>
-        <span>条</span>
-      </div>
-    </section>
-
-    <p v-if="error" class="error">{{ error }}</p>
-
-    <section class="knowledge-table-panel">
-      <div class="knowledge-table-title">
-        <strong>知识管理</strong>
-        <span>共 {{ filteredRecords.length }} 条</span>
-      </div>
-
-      <div v-if="loading" class="admin-muted knowledge-loading">正在加载知识库...</div>
-      <div v-else class="knowledge-table-wrap">
-        <table class="knowledge-table">
-          <thead>
-            <tr>
-              <th class="select-col">
-                <input
-                  type="checkbox"
-                  :checked="pagedRecords.length > 0 && pagedRecords.every((item) => selectedIds.includes(item.id))"
-                  @change="toggleAllSelection"
-                />
-              </th>
-              <th>序号</th>
-              <th>问题</th>
-              <th>答案摘要</th>
-              <th>状态</th>
-              <th>关键词</th>
-              <th>来源</th>
-              <th>分类</th>
-              <th>申请人</th>
-              <th>创建人</th>
-              <th>审核人</th>
-              <th>更新</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="filteredRecords.length === 0">
-              <td colspan="13" class="knowledge-empty">暂无知识</td>
-            </tr>
-            <tr v-for="(record, index) in pagedRecords" :key="record.id">
-              <td class="select-col">
-                <input
-                  type="checkbox"
-                  :checked="selectedIds.includes(record.id)"
-                  @change="toggleSelection(record)"
-                />
-              </td>
-              <td>{{ (page.current - 1) * page.pageSize + index + 1 }}</td>
-              <td class="question-cell">{{ record.question }}</td>
-              <td class="answer-cell">{{ contentSummary(record.content) }}</td>
-              <td>
-                <span class="status-tag" :class="statusClass(record.status)">
-                  {{ formatStatus(record.status) }}
-                </span>
-              </td>
-              <td>{{ record.question }}</td>
-              <td>后台维护</td>
-              <td>{{ record.category }}</td>
-              <td>{{ record.owner }}</td>
-              <td>{{ record.owner }}</td>
-              <td>--</td>
-              <td>{{ record.version }}</td>
-              <td class="operation-cell">
-                <button type="button" @click="openEditDialog(record)">详情</button>
-                <button type="button" @click="openEditDialog(record)">编辑</button>
-                <button type="button" @click="updateStatus(record, 'published')">审核</button>
-                <button type="button" class="danger" @click="updateStatus(record, 'disabled')">删除</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div v-if="!loading && filteredRecords.length > 0" class="table-pagination">
-        <span>共 {{ filteredRecords.length }} 条</span>
-        <label>
-          每页
-          <select :value="page.pageSize" @change="changePageSize">
-            <option :value="10">10</option>
-            <option :value="20">20</option>
-            <option :value="50">50</option>
-            <option :value="100">100</option>
-          </select>
-          条
-        </label>
-        <button type="button" :disabled="page.current <= 1" @click="changePage(page.current - 1)">
-          上一页
-        </button>
-        <strong>{{ page.current }} / {{ totalPages }}</strong>
-        <button type="button" :disabled="page.current >= totalPages" @click="changePage(page.current + 1)">
-          下一页
-        </button>
-      </div>
-    </section>
-
-    <div v-if="dialogVisible" class="admin-dialog-mask" @click.self="closeDialog">
-      <section class="admin-dialog knowledge-dialog">
-        <header>
-          <strong>{{ editingId ? '编辑知识' : '新建知识' }}</strong>
-          <button type="button" @click="closeDialog">×</button>
-        </header>
-        <div class="knowledge-form-grid">
-          <label>
-            <span>知识 ID</span>
-            <input v-model="form.knowledge_id" placeholder="kb_member_auto_renew_cancel" />
-          </label>
-          <label>
-            <span>问题</span>
-            <input v-model="form.question" placeholder="会员自动续费怎么取消" />
-          </label>
-          <label>
-            <span>分类</span>
-            <input v-model="form.category" placeholder="member / account / recharge" />
-          </label>
-          <label>
-            <span>状态</span>
-            <select v-model="form.status">
-              <option value="published">通过</option>
-              <option value="draft">待审核</option>
-              <option value="disabled">已停用</option>
-            </select>
-          </label>
-          <label>
-            <span>申请人 / 创建人</span>
-            <input v-model="form.owner" placeholder="cs_operation" />
-          </label>
-          <label>
-            <span>版本</span>
-            <input v-model="form.version" placeholder="v1" />
-          </label>
-          <label class="wide">
-            <span>答案内容</span>
-            <textarea v-model="form.content" rows="8" placeholder="填写可用于 RAG 回答的知识正文"></textarea>
-          </label>
+    <el-card shadow="never" class="toolbar-card">
+      <el-form :inline="true" class="filter-form">
+        <el-form-item label="关键词">
+          <el-input v-model="filters.keyword" placeholder="问题/答案/关键词" clearable />
+        </el-form-item>
+        <el-form-item label="审核状态">
+          <el-select v-model="filters.status" style="width: 120px">
+            <el-option label="全部" value="all" />
+            <el-option label="待审核" value="draft" />
+            <el-option label="通过" value="published" />
+            <el-option label="已停用" value="disabled" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="内容">
+          <el-select v-model="filters.hasContent" style="width: 130px">
+            <el-option label="全部" value="all" />
+            <el-option label="有答案" value="yes" />
+            <el-option label="无答案" value="no" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="分类">
+          <el-select v-model="filters.category" style="width: 140px">
+            <el-option label="全部分类" value="all" />
+            <el-option v-for="category in categoryOptions" :key="category" :label="category" :value="category" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="申请人">
+          <el-input v-model="filters.owner" placeholder="申请人" clearable />
+        </el-form-item>
+        <el-form-item label="版本">
+          <el-input v-model="filters.version" placeholder="版本" clearable />
+        </el-form-item>
+      </el-form>
+      <div class="toolbar-row">
+        <el-tag type="warning">待审核 {{ pendingCount }} 条</el-tag>
+        <div class="toolbar-actions">
+          <el-button @click="resetFilters">重置</el-button>
+          <el-button type="primary" :loading="loading" @click="loadKnowledge">搜索</el-button>
+          <el-button :disabled="selectedRows.length === 0">批量删除({{ selectedRows.length }})</el-button>
+          <el-button>导入 Excel</el-button>
+          <el-button type="primary" @click="openCreateDialog">新建</el-button>
         </div>
-        <footer>
-          <button type="button" @click="closeDialog">取消</button>
-          <button type="button" class="primary" :disabled="saving" @click="submitKnowledge">
-            {{ saving ? '保存中' : '保存' }}
-          </button>
-        </footer>
-      </section>
-    </div>
-  </main>
+      </div>
+    </el-card>
+
+    <el-card shadow="never" class="table-card">
+      <template #header>
+        <div class="table-card-header">
+          <strong>知识列表</strong>
+          <span>共 {{ filteredRecords.length }} 条</span>
+        </div>
+      </template>
+
+      <el-table
+        v-loading="loading"
+        border
+        :data="pagedRecords"
+        empty-text="暂无知识"
+        @selection-change="(rows: KnowledgeRecord[]) => (selectedRows = rows)"
+      >
+        <el-table-column type="selection" width="48" />
+        <el-table-column label="序号" width="70">
+          <template #default="{ $index }">{{ (page.current - 1) * page.pageSize + $index + 1 }}</template>
+        </el-table-column>
+        <el-table-column prop="question" label="问题" min-width="180" show-overflow-tooltip />
+        <el-table-column label="答案摘要" min-width="200" show-overflow-tooltip>
+          <template #default="{ row }">{{ contentSummary(row.content) }}</template>
+        </el-table-column>
+        <el-table-column label="状态" width="100">
+          <template #default="{ row }">
+            <el-tag :type="statusTagType(row.status)">{{ formatStatus(row.status) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="category" label="分类" width="120" />
+        <el-table-column prop="owner" label="申请人" width="120" />
+        <el-table-column prop="version" label="版本" width="80" />
+        <el-table-column label="操作" width="220" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="openEditDialog(row as KnowledgeRecord)">编辑</el-button>
+            <el-button link type="success" @click="updateStatus(row as KnowledgeRecord, 'published')">审核</el-button>
+            <el-button link type="danger" @click="updateStatus(row as KnowledgeRecord, 'disabled')">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="pagination-wrap">
+        <el-pagination
+          v-model:current-page="page.current"
+          v-model:page-size="page.pageSize"
+          :total="filteredRecords.length"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next"
+          background
+        />
+      </div>
+    </el-card>
+
+    <el-dialog
+      v-model="dialogVisible"
+      :title="editingId ? '编辑知识' : '新建知识'"
+      width="720px"
+      destroy-on-close
+      @closed="closeDialog"
+    >
+      <el-form label-width="110px">
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="知识 ID">
+              <el-input v-model="form.knowledge_id" placeholder="kb_member_auto_renew_cancel" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="问题">
+              <el-input v-model="form.question" placeholder="会员自动续费怎么取消" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="分类">
+              <el-input v-model="form.category" placeholder="member / account" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="状态">
+              <el-select v-model="form.status" style="width: 100%">
+                <el-option label="通过" value="published" />
+                <el-option label="待审核" value="draft" />
+                <el-option label="已停用" value="disabled" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="申请人">
+              <el-input v-model="form.owner" placeholder="cs_operation" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="版本">
+              <el-input v-model="form.version" placeholder="v1" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="答案内容">
+              <el-input
+                v-model="form.content"
+                type="textarea"
+                :rows="8"
+                placeholder="填写可用于 RAG 回答的知识正文"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <template #footer>
+        <el-button @click="closeDialog">取消</el-button>
+        <el-button type="primary" :loading="saving" @click="submitKnowledge">保存</el-button>
+      </template>
+    </el-dialog>
+  </div>
 </template>
+
+<style scoped>
+.filter-form {
+  margin-bottom: 8px;
+}
+
+.pagination-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+</style>
