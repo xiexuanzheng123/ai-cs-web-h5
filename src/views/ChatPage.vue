@@ -150,10 +150,10 @@ function handleQuickAction(action: string) {
   <main class="phone-shell">
     <header class="chat-header">
       <button type="button" class="icon-button" aria-label="返回">‹</button>
-      <div class="bot-avatar">唱</div>
+      <div class="bot-avatar">客</div>
       <div class="title">
-        <strong>小唱机器人</strong>
-        <span>唱吧</span>
+        <strong>智能客服助手</strong>
+        <span>在线服务</span>
       </div>
       <RouterLink class="admin-link" to="/admin/dashboard">管理</RouterLink>
     </header>
@@ -168,7 +168,7 @@ function handleQuickAction(action: string) {
           class="message-row"
           :class="message.role"
         >
-          <div v-if="message.role === 'assistant'" class="mini-avatar">唱</div>
+          <div v-if="message.role === 'assistant'" class="mini-avatar">客</div>
           <div class="bubble">
             <p class="bubble-text">{{ message.content }}</p>
             <span v-if="message.transferToHuman" class="handoff-tag">已转人工</span>
@@ -205,7 +205,7 @@ function handleQuickAction(action: string) {
         </div>
 
         <div v-if="loading" class="message-row assistant">
-          <div class="mini-avatar">唱</div>
+          <div class="mini-avatar">客</div>
           <div class="bubble muted">正在处理...</div>
         </div>
       </div>
