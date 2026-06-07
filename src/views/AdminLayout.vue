@@ -20,7 +20,7 @@ const navItems = [
   { label: '知识库管理', to: '/admin/knowledge', icon: Document },
   { label: '分类管理', to: '/admin/categories', icon: FolderOpened },
   { label: 'RAG 回归集', to: '/admin/rag-eval', icon: Collection },
-  { label: '链路日志', to: '/admin/trace-logs', icon: List },
+  { label: '链路日志1', to: '/admin/trace-logs', icon: List },
 ]
 
 const activeMenu = computed(() => route.path)
